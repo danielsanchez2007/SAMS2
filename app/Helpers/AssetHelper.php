@@ -40,8 +40,8 @@ class AssetHelper
             return;
         }
 
-        if (!self::isUrlReachable($hotUrl)) {
-            // Hot file obsoleto (Vite caído/puerto ocupado): eliminar para que @vite use manifest.
+        if (!self::isViteServerAvailable($hotUrl)) {
+            // Hot file obsoleto (Vite caído/puerto ocupado por otro proceso): eliminar para usar manifest.
             @unlink($hotPath);
             self::$hotStatus = false;
             return;
@@ -50,26 +50,34 @@ class AssetHelper
         self::$hotStatus = true;
     }
 
-    private static function isUrlReachable(string $url): bool
+    private static function isViteServerAvailable(string $url): bool
     {
-        $parts = parse_url($url);
-        $host = $parts['host'] ?? null;
-        $port = $parts['port'] ?? null;
+        $probeUrl = rtrim($url, '/') . '/@vite/client';
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'timeout' => 0.8,
+                'ignore_errors' => true,
+            ],
+        ]);
 
-        if (!$host || !$port) {
+        $body = @file_get_contents($probeUrl, false, $context);
+        if ($body === false) {
             return false;
         }
 
-        $errno = 0;
-        $errstr = '';
-        $timeoutSeconds = 0.2;
-        $connection = @fsockopen($host, (int) $port, $errno, $errstr, $timeoutSeconds);
+        $statusCode = null;
+        if (isset($http_response_header[0]) && preg_match('/\s(\d{3})\s/', $http_response_header[0], $matches)) {
+            $statusCode = (int) $matches[1];
+        }
 
-        if (!is_resource($connection)) {
+        if ($statusCode === null || $statusCode < 200 || $statusCode >= 400) {
             return false;
         }
 
-        fclose($connection);
-        return true;
+        // Vite client contiene estos tokens en JS; evita aceptar cualquier servidor en ese puerto.
+        return str_contains($body, 'vite/client')
+            || str_contains($body, 'import.meta.hot')
+            || str_contains($body, '__vite');
     }
 }
