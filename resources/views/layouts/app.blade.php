@@ -242,7 +242,7 @@
             background: rgba(var(--tema-primary-rgb), 0.1) !important;
         }
     </style>
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+    @if (\App\Helpers\AssetHelper::shouldLoadViteAssets())
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @else
         <script src="https://cdn.tailwindcss.com"></script>
