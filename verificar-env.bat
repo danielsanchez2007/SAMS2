@@ -21,7 +21,7 @@ findstr /C:"APP_URL" ".env" >nul
 if %errorlevel% neq 0 (
     echo ✗ No se encontro APP_URL en el archivo .env
     echo Agregando APP_URL...
-    echo APP_URL=http://preventionworld.test >> .env
+    echo APP_URL=http://sams:8000 >> .env
     echo ✓ APP_URL agregado correctamente
 ) else (
     echo ✓ APP_URL encontrado
@@ -30,7 +30,7 @@ if %errorlevel% neq 0 (
     findstr /C:"APP_URL" ".env"
     echo.
     echo IMPORTANTE: Verifica que APP_URL tenga este formato exacto:
-    echo   APP_URL=http://preventionworld.test
+    echo   APP_URL=http://sams:8000
     echo.
     echo Si tiene espacios, caracteres raros, o esta mal formateado, corrigelo manualmente.
 )

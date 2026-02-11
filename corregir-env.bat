@@ -26,7 +26,7 @@ REM Leer el archivo .env y corregir APP_URL
             echo !linea! | findstr /C:"APP_URL=APP_URL" >nul
             if !errorlevel! equ 0 (
                 REM Esta duplicado, corregirlo
-                echo APP_URL=http://preventionworld.test
+                echo APP_URL=http://sams:8000
             ) else (
                 REM Verificar si tiene el formato correcto
                 echo !linea! | findstr /R "^APP_URL=http://" >nul
@@ -34,7 +34,7 @@ REM Leer el archivo .env y corregir APP_URL
                     echo !linea!
                 ) else (
                     REM No tiene formato correcto, corregirlo
-                    echo APP_URL=http://preventionworld.test
+                    echo APP_URL=http://sams:8000
                 )
             )
         ) else (
