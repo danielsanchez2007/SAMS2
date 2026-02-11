@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\EquipoBaja;
 use App\Models\Equipo;
 use App\Models\EquipoDebaja;
+use App\Models\CodigoDisponible;
 use App\Models\EstadoRemision;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -248,6 +250,78 @@ class EquiposBajaController extends Controller
     }
 
     /**
+     * Elimina un registro de equipos_debaja desde la tabla "Equipos de baja".
+     * También limpia actas asociadas y el equipo original cuando existe.
+     */
+    public function destroyDebaja(EquipoDebaja $equipoDebaja): RedirectResponse
+    {
+        try {
+            DB::beginTransaction();
+
+            $equipoOriginal = $equipoDebaja->equipo_original_id
+                ? Equipo::find($equipoDebaja->equipo_original_id)
+                : null;
+
+            $codigoDebaja = $equipoDebaja->codigo;
+            $codigoOriginal = $equipoDebaja->codigo_original;
+
+            // Eliminar actas de baja asociadas al equipo original, incluido su PDF.
+            if ($equipoOriginal) {
+                $actas = EquipoBaja::where('equipo_id', $equipoOriginal->id)->get();
+                foreach ($actas as $acta) {
+                    if (!empty($acta->acta_pdf)) {
+                        Storage::disk('public')->delete($acta->acta_pdf);
+                    }
+                    $acta->delete();
+                }
+            }
+
+            // Eliminar archivos del registro de baja.
+            $this->eliminarArchivoRelacionado($equipoDebaja->manual_fabricante);
+            $this->eliminarArchivoRelacionado($equipoDebaja->certificacion_fabricante);
+            $this->eliminarArchivoRelacionado($equipoDebaja->imagen_general);
+            $this->eliminarArchivoRelacionado($equipoDebaja->imagen_etiqueta);
+
+            $equipoDebaja->delete();
+
+            // Si existe el equipo original en tabla equipos, eliminarlo también.
+            if ($equipoOriginal) {
+                $this->eliminarArchivoRelacionado($equipoOriginal->manual_fabricante);
+                $this->eliminarArchivoRelacionado($equipoOriginal->certificacion_fabricante);
+                $this->eliminarArchivoRelacionado($equipoOriginal->imagen_general);
+                $this->eliminarArchivoRelacionado($equipoOriginal->imagen_etiqueta);
+                $equipoOriginal->delete();
+            }
+
+            // Liberar códigos para reutilización (DBx e INx cuando existan).
+            $codigosALiberar = array_unique(array_filter([$codigoDebaja, $codigoOriginal]));
+            foreach ($codigosALiberar as $codigo) {
+                CodigoDisponible::firstOrCreate(
+                    ['codigo' => $codigo],
+                    [
+                        'origen_tipo' => 'equipos_debaja',
+                        'equipo_original_id' => null,
+                        'descripcion_original' => 'Código liberado por eliminación de equipo de baja',
+                        'utilizado' => false,
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Registro de equipo de baja eliminado correctamente.');
+        } catch (Throwable $e) {
+            DB::rollBack();
+            \Log::error('Error eliminando registro de equipo de baja', [
+                'equipo_debaja_id' => $equipoDebaja->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'No se pudo eliminar el registro de equipo de baja.');
+        }
+    }
+
+    /**
      * Genera el siguiente código secuencial para un prefijo en una empresa.
      * Revisa equipos, equipos_debaja y material_didactico para evitar colisiones.
      */
@@ -338,5 +412,28 @@ class EquiposBajaController extends Controller
 
         $mime = @mime_content_type($absolutePath) ?: 'image/png';
         return 'data:' . $mime . ';base64,' . base64_encode($contents);
+    }
+
+    private function eliminarArchivoRelacionado(?string $ruta): void
+    {
+        if (!$ruta || !is_string($ruta)) {
+            return;
+        }
+
+        $ruta = ltrim($ruta, '/');
+
+        if (str_starts_with($ruta, 'storage/')) {
+            Storage::disk('public')->delete(substr($ruta, strlen('storage/')));
+            return;
+        }
+
+        // Intentar como ruta de storage "directa"
+        Storage::disk('public')->delete($ruta);
+
+        // Intentar como ruta bajo public/
+        $publicPath = public_path($ruta);
+        if (is_file($publicPath)) {
+            @unlink($publicPath);
+        }
     }
 }
