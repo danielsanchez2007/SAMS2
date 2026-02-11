@@ -59,11 +59,26 @@ class GeminiService
      */
     public function __construct()
     {
-        $this->apiUrl = config('services.gemini.api_url');
-        $this->apiKey = config('services.gemini.api_key');
-        $this->model = config('services.gemini.model');
+        $this->apiUrl = rtrim(trim((string) config('services.gemini.api_url', '')), '/');
+        $this->apiKey = $this->normalizeApiKey((string) config('services.gemini.api_key', ''));
+        $this->model = trim((string) config('services.gemini.model', ''));
         $this->timeout = config('services.gemini.timeout', 30);
         $this->enabled = config('services.gemini.enabled', true);
+    }
+
+    /**
+     * Limpia formato de API key para evitar errores comunes de configuración.
+     */
+    private function normalizeApiKey(string $rawKey): string
+    {
+        $key = trim($rawKey);
+        $key = trim($key, "\"'`");
+
+        if (str_starts_with(mb_strtolower($key, 'UTF-8'), 'bearer ')) {
+            $key = trim(substr($key, 7));
+        }
+
+        return $key;
     }
 
     /**
