@@ -1383,48 +1383,107 @@
                         return `Error del servidor (HTTP ${response.status}).`;
                     };
 
+                    const isInvalidApiKeyError = (errorMsg) => {
+                        const normalized = (errorMsg || '').toLowerCase();
+                        return (
+                            normalized.includes('api key not valid') ||
+                            normalized.includes('invalid api key') ||
+                            normalized.includes('pass a valid api key') ||
+                            normalized.includes('api_key_invalid') ||
+                            normalized.includes('gemini_api_key') ||
+                            (
+                                normalized.includes('api key') &&
+                                (
+                                    normalized.includes('not valid') ||
+                                    normalized.includes('invalid') ||
+                                    normalized.includes('no es válida') ||
+                                    normalized.includes('no es valida')
+                                )
+                            )
+                        );
+                    };
+
+                    const normalizeGeminiError = (errorMsg) => {
+                        const raw = (errorMsg || '').trim();
+                        if (!raw) {
+                            return 'Error desconocido. Por favor, verifica la configuración de Gemini.';
+                        }
+
+                        if (isInvalidApiKeyError(raw)) {
+                            return 'La API Key de Gemini no es válida o no tiene permisos. Usa Modo SAMS o configura GEMINI_API_KEY.';
+                        }
+
+                        return raw;
+                    };
+
                     let activeMode = this.mode;
                     let response = await sendChatRequest(activeMode);
                     let data = await parseChatResponse(response);
 
-                    if (!response.ok) {
-                        let errorMsg = getHttpErrorMessage(response, data);
-                        const normalizedError = (errorMsg || '').toLowerCase();
-                        const invalidApiKeyInFullMode = activeMode === 'full' && (
-                            normalizedError.includes('api key') ||
-                            normalizedError.includes('gemini_api_key') ||
-                            normalizedError.includes('not valid') ||
-                            normalizedError.includes('invalid') ||
-                            normalizedError.includes('no es válida') ||
-                            normalizedError.includes('no es valida')
-                        );
-
-                        if (invalidApiKeyInFullMode) {
+                    const retryUsingSamsMode = async () => {
+                        if (activeMode !== 'sams') {
                             this.mode = 'sams';
                             this.messages.push({
                                 role: 'assistant',
                                 text: '⚠️ Modo Full no disponible por API Key inválida. Cambié automáticamente a Modo SAMS para mantener el asistente funcionando.'
                             });
-
                             activeMode = 'sams';
-                            response = await sendChatRequest(activeMode);
-                            data = await parseChatResponse(response);
+                        }
 
-                            if (!response.ok) {
-                                errorMsg = getHttpErrorMessage(response, data);
-                                this.messages.push({
-                                    role: 'assistant',
-                                    text: '❌ ' + errorMsg
-                                });
-                                console.error('Error HTTP de Gemini (retry SAMS):', { status: response.status, data });
-                                return;
-                            }
+                        response = await sendChatRequest('sams');
+                        data = await parseChatResponse(response);
+
+                        if (!response.ok) {
+                            const retryError = normalizeGeminiError(getHttpErrorMessage(response, data));
+                            this.messages.push({
+                                role: 'assistant',
+                                text: '❌ ' + retryError
+                            });
+                            console.error('Error HTTP de Gemini (retry SAMS):', { status: response.status, data });
+                            return false;
+                        }
+
+                        if (!data?.success) {
+                            const retryError = normalizeGeminiError(data?.error || 'Error desconocido. Por favor, verifica la configuración de Gemini.');
+                            this.messages.push({
+                                role: 'assistant',
+                                text: '❌ ' + retryError
+                            });
+                            console.error('Error lógico de Gemini (retry SAMS):', data);
+                            return false;
+                        }
+
+                        return true;
+                    };
+
+                    if (!response.ok) {
+                        const errorMsg = normalizeGeminiError(getHttpErrorMessage(response, data));
+                        const invalidApiKeyInFullMode = activeMode === 'full' && isInvalidApiKeyError(errorMsg);
+
+                        if (invalidApiKeyInFullMode) {
+                            const fallbackOk = await retryUsingSamsMode();
+                            if (!fallbackOk) return;
                         } else {
                             this.messages.push({
                                 role: 'assistant',
                                 text: '❌ ' + errorMsg
                             });
                             console.error('Error HTTP de Gemini:', { status: response.status, data });
+                            return;
+                        }
+                    } else if (!data?.success) {
+                        const errorMsg = normalizeGeminiError(data?.error || 'Error desconocido. Por favor, verifica la configuración de Gemini.');
+                        const invalidApiKeyInFullMode = activeMode === 'full' && isInvalidApiKeyError(errorMsg);
+
+                        if (invalidApiKeyInFullMode) {
+                            const fallbackOk = await retryUsingSamsMode();
+                            if (!fallbackOk) return;
+                        } else {
+                            this.messages.push({
+                                role: 'assistant',
+                                text: '❌ ' + errorMsg
+                            });
+                            console.error('Error de Gemini:', data);
                             return;
                         }
                     }
@@ -1439,13 +1498,6 @@
                         }
                         // Guardar historial automáticamente
                         this.saveHistory();
-                    } else {
-                        const errorMsg = data?.error || 'Error desconocido. Por favor, verifica la configuración de Gemini.';
-                        this.messages.push({
-                            role: 'assistant',
-                            text: '❌ ' + errorMsg
-                        });
-                        console.error('Error de Gemini:', data);
                     }
                 } catch (err) {
                     const errorMsg = 'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.';

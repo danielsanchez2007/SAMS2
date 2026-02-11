@@ -1234,6 +1234,7 @@ INSTRUCCIONES:
             $isInvalidApiKeyError =
                 str_contains($apiErrorLower, 'api key not valid') ||
                 str_contains($apiErrorLower, 'invalid api key') ||
+                str_contains($apiErrorLower, 'pass a valid api key') ||
                 str_contains($apiErrorLower, 'api_key_invalid') ||
                 (str_contains($apiErrorLower, 'api key') && (
                     str_contains($apiErrorLower, 'not valid') ||
