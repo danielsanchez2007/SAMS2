@@ -29,6 +29,29 @@ class GeminiController extends Controller
     }
 
     /**
+     * Detecta mensajes de API key inválida en diferentes formatos.
+     */
+    private function hasInvalidApiKeyError(?string $text): bool
+    {
+        $value = mb_strtolower(trim((string) $text), 'UTF-8');
+        if ($value === '') {
+            return false;
+        }
+
+        return str_contains($value, 'api key not valid')
+            || str_contains($value, 'invalid api key')
+            || str_contains($value, 'pass a valid api key')
+            || str_contains($value, 'api_key_invalid')
+            || str_contains($value, 'gemini_api_key')
+            || (str_contains($value, 'api key') && (
+                str_contains($value, 'not valid')
+                || str_contains($value, 'invalid')
+                || str_contains($value, 'no es válida')
+                || str_contains($value, 'no es valida')
+            ));
+    }
+
+    /**
      * Muestra la página de prueba de Gemini (opcional)
      *
      * @return View
@@ -195,10 +218,14 @@ class GeminiController extends Controller
         ]);
 
         try {
+            $requestedMode = $request->mode ?? 'sams';
+            $history = $request->history ?? [];
+            $message = $request->message;
+
             $result = $this->geminiService->chatWithContext(
-                $request->message,
-                $request->history ?? [],
-                $request->mode ?? 'sams'
+                $message,
+                $history,
+                $requestedMode
             );
 
             // Asegurar que siempre se devuelva un array con success
@@ -207,7 +234,40 @@ class GeminiController extends Controller
                 $result['error'] = $result['error'] ?? 'Error desconocido en el servicio.';
             }
 
-            $requestedMode = $request->mode ?? 'sams';
+            // Fallback defensivo: si en modo Full aparece error de API key, forzar SAMS.
+            $invalidKeyDetected = $this->hasInvalidApiKeyError($result['error'] ?? null)
+                || $this->hasInvalidApiKeyError($result['message'] ?? null);
+
+            if ($requestedMode === 'full' && $invalidKeyDetected) {
+                $fallback = $this->geminiService->chatWithContext($message, $history, 'sams');
+
+                if (!isset($fallback['success'])) {
+                    $fallback['success'] = false;
+                }
+
+                if (!($fallback['success'] ?? false)) {
+                    $fallback['success'] = true;
+                    $fallback['error'] = null;
+                    $fallback['message'] = 'Modo Full no disponible por API Key inválida. Se activó Modo SAMS automáticamente.';
+                } elseif (($fallback['message'] ?? null) === null) {
+                    $fallback['message'] = 'Modo Full no disponible por API Key inválida. Se activó Modo SAMS automáticamente.';
+                }
+
+                $fallback['effective_mode'] = 'sams';
+                $result = $fallback;
+            }
+
+            // Nunca mostrar texto crudo en inglés de API key inválida.
+            if ($this->hasInvalidApiKeyError($result['error'] ?? null)) {
+                $result['error'] = 'La API Key de Gemini no es válida o no tiene permisos. Se activó Modo SAMS automáticamente.';
+            }
+            if ($this->hasInvalidApiKeyError($result['message'] ?? null)) {
+                $result['message'] = 'La API Key de Gemini no es válida o no tiene permisos. Se activó Modo SAMS automáticamente.';
+                if ($requestedMode === 'full') {
+                    $result['effective_mode'] = 'sams';
+                }
+            }
+
             $statusCode = $result['success'] ? 200 : ($requestedMode === 'sams' ? 200 : 502);
 
             return response()->json($result, $statusCode);

@@ -1499,12 +1499,16 @@
                             activeMode = data.effective_mode;
                         }
 
+                        const assistantText = isInvalidApiKeyError(data?.message || '')
+                            ? 'La API Key de Gemini no es válida o no tiene permisos. Se activó Modo SAMS automáticamente.'
+                            : (data?.message || 'Sin respuesta del asistente.');
+
                         this.messages.push({
                             role: 'assistant',
-                            text: data.message
+                            text: assistantText
                         });
                         if (this.autoSpeak) {
-                            this.$nextTick(() => this.speakText(data.message));
+                            this.$nextTick(() => this.speakText(assistantText));
                         }
                         // Guardar historial automáticamente
                         this.saveHistory();
