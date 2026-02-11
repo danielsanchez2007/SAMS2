@@ -1489,6 +1489,16 @@
                     }
 
                     if (data?.success) {
+                        if (activeMode === 'full' && isInvalidApiKeyError(data?.message || '')) {
+                            const fallbackOk = await retryUsingSamsMode();
+                            if (!fallbackOk) return;
+                        }
+
+                        if (data?.effective_mode === 'sams' || data?.effective_mode === 'full') {
+                            this.mode = data.effective_mode;
+                            activeMode = data.effective_mode;
+                        }
+
                         this.messages.push({
                             role: 'assistant',
                             text: data.message
