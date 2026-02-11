@@ -27,7 +27,7 @@ echo    - O simplemente: Listen 80
 echo.
 echo 2. Verificar el Virtual Host
 echo    - Asegurate de que el VirtualHost use *:80 en lugar de 127.0.0.1:80
-echo    - El archivo preventionworld.conf ya esta configurado correctamente
+echo    - El archivo sams.conf ya esta configurado correctamente
 echo.
 echo 3. Configurar el Firewall de Windows
 echo    - Abre el Firewall de Windows
@@ -62,7 +62,7 @@ echo.
 echo 6. Desde tu celular (conectado a la misma red WiFi):
 echo    - Abre el navegador
 echo    - Visita: http://192.168.2.59
-echo    - O si usas el dominio: http://192.168.2.59/preventionworld.test
+echo    - O si usas dominio local: http://sams
 echo.
 echo NOTA: Si tu IP cambia, ejecuta: ipconfig ^| findstr IPv4
 echo       para obtener tu nueva direccion IP
