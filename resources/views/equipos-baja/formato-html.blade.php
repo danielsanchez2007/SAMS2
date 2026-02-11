@@ -24,9 +24,13 @@
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 16px;
+            gap: 10px;
         }
         .logo {
             flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         .title {
             flex: 1;
@@ -117,13 +121,12 @@
     <div class="page">
         <div class="header">
             <div class="logo">
-                @php
-                    $logoEmpresa = config('temas_sistema.logo_main_cache_key', 'sistema_logo_principal');
-                    $logoPath = \Illuminate\Support\Facades\Cache::get($logoEmpresa);
-                    $logoUrl = $logoPath ? asset('storage/' . ltrim($logoPath, '/')) : asset('img/logos/logoSams.png');
-                @endphp
-                <img src="{{ $logoUrl }}" alt="Logo empresa" style="max-height: 48px; max-width: 160px;">
-                <div style="font-size: 9px; margin-top: 4px;">Una Cultura para Mejorar Nuestra Calidad de Vida</div>
+                @if(!empty($logoMainDataUri))
+                    <img src="{{ $logoMainDataUri }}" alt="Logo principal" style="max-height: 48px; max-width: 160px;">
+                @endif
+                @if(!empty($logoSecondaryDataUri))
+                    <img src="{{ $logoSecondaryDataUri }}" alt="Logo secundario" style="max-height: 48px; max-width: 160px;">
+                @endif
             </div>
             <div class="title">ACTA DE BAJA DE ELEMENTOS DEVOLUTIVOS, INSERVIBLES U OBSOLETOS</div>
             <div class="version-box">

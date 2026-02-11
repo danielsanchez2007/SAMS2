@@ -133,16 +133,29 @@ class EquiposBajaController extends Controller
 
     /**
      * Crea o actualiza el registro espejo en equipos_debaja usando una estrategia
-     * tolerante a datos históricos (por equipo_original_id y por código/empresa).
+     * tolerante a datos históricos.
      */
     private function upsertEquipoDebajaDesdeEquipo(Equipo $equipo): EquipoDebaja
     {
+        $registro = EquipoDebaja::query()
+            ->where('equipo_original_id', $equipo->id)
+            ->orWhere(function ($q) use ($equipo) {
+                $q->where('codigo_original', $equipo->codigo)
+                    ->where('empresa_id', $equipo->empresa_id);
+            })
+            ->first();
+
+        // Si no tiene código de baja previo, generar uno secuencial (DB1, DB2, ...).
+        $codigoDebaja = $registro?->codigo;
+        if (empty($codigoDebaja)) {
+            $codigoDebaja = $this->generarCodigoConPrefijo('DB', (int) $equipo->empresa_id);
+        }
+
         $datosDebaja = [
             'empresa_id' => $equipo->empresa_id,
             'equipo_original_id' => $equipo->id,
             'codigo_original' => $equipo->codigo,
-            // Se conserva el mismo código al pasar por acta de baja.
-            'codigo' => $equipo->codigo,
+            'codigo' => $codigoDebaja,
             'tipo_item_id' => $equipo->tipo_item_id,
             'tipo_equipo_id' => $equipo->tipo_equipo_id,
             'codigo_bloqueado' => $equipo->codigo_bloqueado,
@@ -176,14 +189,6 @@ class EquiposBajaController extends Controller
             'imagen_etiqueta' => $equipo->imagen_etiqueta,
         ];
 
-        $registro = EquipoDebaja::query()
-            ->where('equipo_original_id', $equipo->id)
-            ->orWhere(function ($q) use ($equipo) {
-                $q->where('codigo', $equipo->codigo)
-                    ->where('empresa_id', $equipo->empresa_id);
-            })
-            ->first();
-
         if ($registro) {
             $registro->fill($datosDebaja);
             $registro->save();
@@ -213,8 +218,20 @@ class EquiposBajaController extends Controller
      */
     public function formatoHtml(Equipo $equipo): View
     {
+        $logoMainDataUri = $this->resolverLogoDataUri(
+            config('temas_sistema.logo_main_cache_key', 'sistema_logo_principal'),
+            'img/logos/logoSams.png'
+        );
+
+        $logoSecondaryDataUri = $this->resolverLogoDataUri(
+            config('temas_sistema.logo_secondary_cache_key', 'sistema_logo_secundario'),
+            'img/logos/LOGO-INSTITUTO-PREVENTION-WORLD.png'
+        );
+
         return view('equipos-baja.formato-html', [
             'equipo' => $equipo->load('sede', 'tipoEquipo'),
+            'logoMainDataUri' => $logoMainDataUri,
+            'logoSecondaryDataUri' => $logoSecondaryDataUri,
         ]);
     }
 
@@ -228,5 +245,98 @@ class EquiposBajaController extends Controller
         }
 
         return Storage::disk('public')->download($equipoBaja->acta_pdf, 'acta_baja_' . $equipoBaja->equipo->codigo . '.pdf');
+    }
+
+    /**
+     * Genera el siguiente código secuencial para un prefijo en una empresa.
+     * Revisa equipos, equipos_debaja y material_didactico para evitar colisiones.
+     */
+    private function generarCodigoConPrefijo(string $prefijo, int $empresaId): string
+    {
+        $maximo = 0;
+
+        $equipos = Equipo::query()
+            ->where('empresa_id', $empresaId)
+            ->where('codigo', 'like', $prefijo . '%')
+            ->pluck('codigo');
+        foreach ($equipos as $codigo) {
+            $maximo = max($maximo, $this->extraerNumeroPrefijo($prefijo, (string) $codigo));
+        }
+
+        $debaja = EquipoDebaja::query()
+            ->where('empresa_id', $empresaId)
+            ->where('codigo', 'like', $prefijo . '%')
+            ->pluck('codigo');
+        foreach ($debaja as $codigo) {
+            $maximo = max($maximo, $this->extraerNumeroPrefijo($prefijo, (string) $codigo));
+        }
+
+        $material = DB::table('material_didactico')
+            ->where('empresa_id', $empresaId)
+            ->where('codigo', 'like', $prefijo . '%')
+            ->pluck('codigo');
+        foreach ($material as $codigo) {
+            $maximo = max($maximo, $this->extraerNumeroPrefijo($prefijo, (string) $codigo));
+        }
+
+        return $prefijo . ($maximo + 1);
+    }
+
+    private function extraerNumeroPrefijo(string $prefijo, string $codigo): int
+    {
+        if (preg_match('/^' . preg_quote($prefijo, '/') . '(\d+)$/', $codigo, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
+    }
+
+    /**
+     * Resuelve un logo cacheado (ruta pública o storage) y lo convierte en data URI
+     * para que siempre se incruste en el PDF del acta.
+     */
+    private function resolverLogoDataUri(string $cacheKey, string $fallbackPublicPath): ?string
+    {
+        $logoPath = Cache::get($cacheKey);
+        $absolutePath = null;
+
+        if (is_string($logoPath) && $logoPath !== '') {
+            $ruta = ltrim($logoPath, '/');
+
+            if (str_starts_with($ruta, 'storage/')) {
+                $storageRelative = substr($ruta, strlen('storage/'));
+                $candidate = storage_path('app/public/' . $storageRelative);
+                if (is_file($candidate)) {
+                    $absolutePath = $candidate;
+                }
+            } else {
+                if (str_starts_with($ruta, 'public/')) {
+                    $ruta = substr($ruta, strlen('public/'));
+                }
+                $candidate = public_path($ruta);
+                if (is_file($candidate)) {
+                    $absolutePath = $candidate;
+                }
+            }
+        }
+
+        if (!$absolutePath) {
+            $fallbackAbsolutePath = public_path(ltrim($fallbackPublicPath, '/'));
+            if (is_file($fallbackAbsolutePath)) {
+                $absolutePath = $fallbackAbsolutePath;
+            }
+        }
+
+        if (!$absolutePath) {
+            return null;
+        }
+
+        $contents = @file_get_contents($absolutePath);
+        if ($contents === false) {
+            return null;
+        }
+
+        $mime = @mime_content_type($absolutePath) ?: 'image/png';
+        return 'data:' . $mime . ';base64,' . base64_encode($contents);
     }
 }

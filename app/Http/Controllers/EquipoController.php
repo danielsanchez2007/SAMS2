@@ -2665,7 +2665,7 @@ class EquipoController extends Controller
             $perPage = 10;
         }
 
-        $equipos = EquipoDebaja::with(['tipoItem', 'tipoEquipo', 'estadoRemision', 'proveedor', 'fabricante', 'empresa', 'sede', 'bodega', 'usoItem'])
+        $equipos = EquipoDebaja::with(['tipoItem', 'tipoEquipo', 'estadoRemision', 'proveedor', 'fabricante', 'empresa', 'sede', 'bodega', 'usoItem', 'ultimaActaBaja'])
             // Excluir equipos de auditoría (códigos que empiezan con AU) - estos deben estar en la tabla equipos con tipo_registro = 'auditoria'
             ->where('codigo', 'not like', 'AU%')
             ->when($search, function ($q) use ($search) {
