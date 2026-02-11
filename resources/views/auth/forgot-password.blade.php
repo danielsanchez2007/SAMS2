@@ -1,14 +1,10 @@
 @php
-    $temaActual = \Illuminate\Support\Facades\Cache::get(
-        config('temas_sistema.cache_key', 'sistema_tema_color'),
-        config('temas_sistema.default', 'indigo')
-    );
-    $temaConfig = config('temas_sistema.temas.' . $temaActual, []);
-    $temaFrom = $temaConfig['from'] ?? '#4f46e5';
-    $temaTo = $temaConfig['to'] ?? '#7c3aed';
-    $temaPrimary = $temaConfig['primary'] ?? '#6366f1';
-    $temaPrimaryHover = $temaConfig['primary_hover'] ?? '#4f46e5';
-    $temaPrimaryLight = $temaConfig['primary_light'] ?? 'rgba(99, 102, 241, 0.2)';
+    $temaConfig = \App\Helpers\TemaHelper::temaActual();
+    $temaFrom = $temaConfig['from'] ?? '#005870';
+    $temaTo = $temaConfig['to'] ?? '#2dbae1';
+    $temaPrimary = $temaConfig['primary'] ?? '#1b819d';
+    $temaPrimaryHover = $temaConfig['primary_hover'] ?? $temaFrom;
+    $temaPrimaryLight = $temaConfig['primary_light'] ?? 'rgba(27, 129, 157, 0.2)';
     $logoMain = \Illuminate\Support\Facades\Cache::get(
         config('temas_sistema.logo_main_cache_key', 'sistema_logo_principal')
     );
@@ -21,7 +17,7 @@
     <title>Olvidé mi contraseña — {{ config('app.name') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+    @if (\App\Helpers\AssetHelper::shouldLoadViteAssets())
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @else
         <script src="https://cdn.tailwindcss.com"></script>

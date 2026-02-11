@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class EquipoDebaja extends Model
 {
@@ -83,5 +84,11 @@ class EquipoDebaja extends Model
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
+    }
+
+    public function ultimaActaBaja(): HasOne
+    {
+        return $this->hasOne(EquipoBaja::class, 'equipo_id', 'equipo_original_id')
+            ->latestOfMany('fecha_baja');
     }
 }

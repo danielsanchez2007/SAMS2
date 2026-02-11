@@ -339,6 +339,7 @@ Route::middleware(['sams2.auth'])->group(function () {
     Route::middleware(['sams2.module:equipos'])->group(function () {
     Route::get('/equipos-baja', [\App\Http\Controllers\EquiposBajaController::class, 'index'])->name('equipos-baja.index');
     Route::post('/equipos-baja', [\App\Http\Controllers\EquiposBajaController::class, 'store'])->name('equipos-baja.store');
+    Route::delete('/equipos-baja/registro/{equipoDebaja}', [\App\Http\Controllers\EquiposBajaController::class, 'destroyDebaja'])->name('equipos-baja.destroy');
     Route::get('/equipos-baja/{equipo}/formato-html', [\App\Http\Controllers\EquiposBajaController::class, 'formatoHtml'])->name('equipos-baja.formato-html');
     Route::get('/equipos-baja/{equipoBaja}/download', [\App\Http\Controllers\EquiposBajaController::class, 'download'])->name('equipos-baja.download');
     });

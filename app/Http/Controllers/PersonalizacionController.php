@@ -21,14 +21,15 @@ class PersonalizacionController extends Controller
     public function index(): View
     {
         $temas = TemaHelper::todosTemas();
-        $temaActual = Cache::get(self::getCacheKey(), config('temas_sistema.default', 'indigo'));
+        $temaActual = Cache::get(self::getCacheKey(), config('temas_sistema.default', 'custom_p6'));
         $logoMain = Cache::get(config('temas_sistema.logo_main_cache_key', 'sistema_logo_principal'));
         $logoSecondary = Cache::get(config('temas_sistema.logo_secondary_cache_key', 'sistema_logo_secundario'));
-        $customColores = Cache::get(config('temas_sistema.custom_cache_key', 'sistema_tema_custom_colores'), ['#4f46e5', '#7c3aed']);
-        $defaultsP3 = ['#4f46e5', '#7c3aed', '#6366f1'];
-        $defaultsP4 = ['#4f46e5', '#7c3aed', '#6366f1', '#22c55e'];
-        $defaultsP5 = ['#4f46e5', '#7c3aed', '#6366f1', '#22c55e', '#f59e0b'];
-        $defaultsP6 = ['#4f46e5', '#7c3aed', '#6366f1', '#22c55e', '#f59e0b', '#ec4899'];
+        $defaultPalette = ['#005870', '#1b819d', '#2dbae1', '#2dbae1', '#1b819d', '#096b86'];
+        $customColores = Cache::get(config('temas_sistema.custom_cache_key', 'sistema_tema_custom_colores'), array_slice($defaultPalette, 0, 2));
+        $defaultsP3 = array_slice($defaultPalette, 0, 3);
+        $defaultsP4 = array_slice($defaultPalette, 0, 4);
+        $defaultsP5 = array_slice($defaultPalette, 0, 5);
+        $defaultsP6 = $defaultPalette;
 
         return view('personalizacion.index', [
             'temas' => $temas,
@@ -81,7 +82,7 @@ class PersonalizacionController extends Controller
         foreach (['custom_p3' => [config('temas_sistema.custom_cache_p3', 'sistema_tema_custom_p3'), 3], 'custom_p4' => [config('temas_sistema.custom_cache_p4', 'sistema_tema_custom_p4'), 4], 'custom_p5' => [config('temas_sistema.custom_cache_p5', 'sistema_tema_custom_p5'), 5], 'custom_p6' => [config('temas_sistema.custom_cache_p6', 'sistema_tema_custom_p6'), 6]] as $ck => [$cacheKey, $n]) {
             if ($request->input('tema') === $ck) {
                 $cols = $request->input("custom_colores_{$n}", []);
-                Cache::forever($cacheKey, array_slice(array_pad($cols, $n, '#4f46e5'), 0, $n));
+                Cache::forever($cacheKey, array_slice(array_pad($cols, $n, '#005870'), 0, $n));
             }
         }
 
