@@ -194,13 +194,6 @@ class GeminiController extends Controller
             'mode' => 'nullable|string|in:full,sams',
         ]);
 
-        if (!$this->geminiService->isConfigured()) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Servicio no disponible.',
-            ], 503);
-        }
-
         try {
             $result = $this->geminiService->chatWithContext(
                 $request->message,
@@ -214,7 +207,10 @@ class GeminiController extends Controller
                 $result['error'] = $result['error'] ?? 'Error desconocido en el servicio.';
             }
 
-            return response()->json($result, $result['success'] ? 200 : 500);
+            $requestedMode = $request->mode ?? 'sams';
+            $statusCode = $result['success'] ? 200 : ($requestedMode === 'sams' ? 200 : 502);
+
+            return response()->json($result, $statusCode);
         } catch (\Exception $e) {
             \Log::error('GeminiController: Excepción no capturada', [
                 'error' => $e->getMessage(),
@@ -225,7 +221,7 @@ class GeminiController extends Controller
             
             return response()->json([
                 'success' => false,
-                'error' => 'Error interno del servidor: ' . $e->getMessage(),
+                'error' => 'Error interno del servidor.',
             ], 500);
         }
     }

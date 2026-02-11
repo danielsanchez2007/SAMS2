@@ -1350,15 +1350,46 @@
                             mode: this.mode
                         })
                     });
-                    
-                    // Verificar si la respuesta es exitosa
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+
+                    let data = null;
+                    const contentType = response.headers.get('content-type') || '';
+
+                    if (contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const rawBody = await response.text();
+                        data = {
+                            success: false,
+                            error: rawBody
+                                ? `Respuesta no válida del servidor (HTTP ${response.status}).`
+                                : null
+                        };
                     }
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
+
+                    if (!response.ok) {
+                        let errorMsg = data?.error || data?.message || null;
+
+                        if (!errorMsg) {
+                            if (response.status === 419) {
+                                errorMsg = 'La sesión expiró. Recarga la página e inicia sesión de nuevo.';
+                            } else if (response.status === 503) {
+                                errorMsg = 'El servicio de Gemini no está disponible. Intenta nuevamente en unos minutos.';
+                            } else if (response.status === 500) {
+                                errorMsg = 'Error interno del servidor. Por favor, intenta más tarde.';
+                            } else {
+                                errorMsg = `Error del servidor (HTTP ${response.status}).`;
+                            }
+                        }
+
+                        this.messages.push({
+                            role: 'assistant',
+                            text: '❌ ' + errorMsg
+                        });
+                        console.error('Error HTTP de Gemini:', { status: response.status, data });
+                        return;
+                    }
+
+                    if (data?.success) {
                         this.messages.push({
                             role: 'assistant',
                             text: data.message
@@ -1369,7 +1400,7 @@
                         // Guardar historial automáticamente
                         this.saveHistory();
                     } else {
-                        const errorMsg = data.error || 'Error desconocido. Por favor, verifica la configuración de Gemini.';
+                        const errorMsg = data?.error || 'Error desconocido. Por favor, verifica la configuración de Gemini.';
                         this.messages.push({
                             role: 'assistant',
                             text: '❌ ' + errorMsg
@@ -1377,15 +1408,7 @@
                         console.error('Error de Gemini:', data);
                     }
                 } catch (err) {
-                    let errorMsg = 'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.';
-                    
-                    if (err.message && err.message.includes('HTTP error')) {
-                        if (err.message.includes('503')) {
-                            errorMsg = 'El servicio de Gemini no está disponible. Por favor, contacta al administrador.';
-                        } else if (err.message.includes('500')) {
-                            errorMsg = 'Error interno del servidor. Por favor, intenta más tarde.';
-                        }
-                    }
+                    const errorMsg = 'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.';
                     
                     this.messages.push({
                         role: 'assistant',

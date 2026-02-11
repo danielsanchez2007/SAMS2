@@ -441,6 +441,49 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
     }
 
     /**
+     * Respuestas rápidas para interacción básica en modo SAMS
+     * (saludos, ayuda y mensajes introductorios).
+     */
+    private function answerBasicSamsQuestion(string $normalizedMessage): ?string
+    {
+        $text = trim($normalizedMessage);
+
+        if ($text === '') {
+            return null;
+        }
+
+        if (preg_match('/^(hola|hi|hello|buenas|buenos dias|buenas tardes|buenas noches|hey|holi|que tal|qué tal)[\s!¡¿?.,]*$/u', $text)) {
+            return "¡Hola! Soy el asistente de SAMS2.\nPuedo ayudarte con usuarios, equipos, roles, inventario y reportes.\n\nEjemplos:\n• ¿Cuántos equipos hay?\n• ¿Hay usuarios duplicados?\n• Buscar usuario con cédula 123456789";
+        }
+
+        if (str_contains($text, 'ayuda')
+            || str_contains($text, 'que puedes hacer')
+            || str_contains($text, 'qué puedes hacer')
+            || str_contains($text, 'comandos')
+            || str_contains($text, 'como funciona')
+            || str_contains($text, 'cómo funciona')
+            || str_contains($text, 'como uso')
+            || str_contains($text, 'cómo uso')) {
+            return $this->buildSamsLocalFallbackMessage();
+        }
+
+        return null;
+    }
+
+    /**
+     * Mensaje de respaldo para mantener útil el chat SAMS
+     * cuando Gemini externo no responde.
+     */
+    private function buildSamsLocalFallbackMessage(?string $serviceError = null): string
+    {
+        $intro = $serviceError
+            ? "No pude completar esta consulta con Gemini en este momento, pero sigo disponible con datos de SAMS2."
+            : "Estoy disponible en modo SAMS con datos reales del sistema.";
+
+        return "{$intro}\n\nPrueba con:\n• ¿Cuántos usuarios/equipos/proveedores hay?\n• ¿Qué acceso tiene el rol Administrador?\n• Buscar usuario con cédula 123456789\n• Revisar usuarios con nombres duplicados o parecidos";
+    }
+
+    /**
      * Intenta responder directamente preguntas típicas en modo SAMS (conteos, listas, usuarios, roles, códigos),
      * consultando la base de datos sin llamar a la API de Gemini.
      *
@@ -450,6 +493,11 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
     private function answerSamsCountQuestion(string $userMessage, array $conversationHistory = []): ?string
     {
         $text = mb_strtolower($userMessage, 'UTF-8');
+
+        $basic = $this->answerBasicSamsQuestion($text);
+        if ($basic !== null) {
+            return $basic;
+        }
 
         // —— Búsqueda combinada: cédula Y nombre (ej: "con cedula 1079176426 y alguna que se llam laura") ——
         if (preg_match('/\b(?:con\s+)?(?:c[ée]dula|cedula|id)\s+([0-9]+)\s+(?:y|e)\s+(?:alg[uo]na?\s+)?(?:que\s+se\s+llam[ae]|llamad[oa]|con\s+nombre)\s+([a-záéíóúñ\s]+)/ui', $text, $m)
@@ -940,6 +988,14 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
         }
 
         if (!$this->isConfigured()) {
+            if ($mode === 'sams') {
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'message' => $this->buildSamsLocalFallbackMessage('gemini_not_configured'),
+                ];
+            }
+
             return [
                 'success' => false,
                 'error' => 'El servicio de Gemini no está configurado correctamente.',
@@ -1067,6 +1123,15 @@ INSTRUCCIONES:
                         'error' => $jsonError->getMessage(),
                         'body' => substr($response->body(), 0, 500)
                     ]);
+
+                    if ($mode === 'sams') {
+                        return [
+                            'success' => true,
+                            'error' => null,
+                            'message' => $this->buildSamsLocalFallbackMessage('invalid_json_response'),
+                        ];
+                    }
+
                     return [
                         'success' => false,
                         'error' => 'La respuesta de Gemini no es válida. Por favor, intenta nuevamente.',
@@ -1077,6 +1142,15 @@ INSTRUCCIONES:
                 // Verificar si hay candidatos
                 if (!isset($data['candidates']) || empty($data['candidates'])) {
                     Log::warning('Gemini: Respuesta sin candidatos', ['data' => $data]);
+
+                    if ($mode === 'sams') {
+                        return [
+                            'success' => true,
+                            'error' => null,
+                            'message' => $this->buildSamsLocalFallbackMessage('empty_candidates'),
+                        ];
+                    }
+
                     return [
                         'success' => false,
                         'error' => 'La API de Gemini no devolvió una respuesta válida. Por favor, intenta nuevamente.',
@@ -1108,12 +1182,28 @@ INSTRUCCIONES:
                         }
                     }
                     if ($blocked) {
+                        if ($mode === 'sams') {
+                            return [
+                                'success' => true,
+                                'error' => null,
+                                'message' => $this->buildSamsLocalFallbackMessage('safety_blocked'),
+                            ];
+                        }
+
                         return [
                             'success' => false,
                             'error' => 'La respuesta fue bloqueada por filtros de seguridad de Gemini. Por favor, reformula tu pregunta.',
                             'message' => null,
                         ];
                     }
+                }
+
+                if ($mode === 'sams') {
+                    return [
+                        'success' => true,
+                        'error' => null,
+                        'message' => $this->buildSamsLocalFallbackMessage('empty_text_response'),
+                    ];
                 }
                 
                 return [
@@ -1161,6 +1251,14 @@ INSTRUCCIONES:
                 'response' => $errorData,
                 'body' => $response->body()
             ]);
+
+            if ($mode === 'sams') {
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'message' => $this->buildSamsLocalFallbackMessage($errorMessage),
+                ];
+            }
             
             return [
                 'success' => false,
@@ -1173,6 +1271,15 @@ INSTRUCCIONES:
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            if ($mode === 'sams') {
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'message' => $this->buildSamsLocalFallbackMessage('connection_error'),
+                ];
+            }
+
             return [
                 'success' => false,
                 'error' => 'No se pudo conectar con la API de Gemini. Verifica tu conexión a internet y la configuración de la API Key.',
@@ -1185,6 +1292,15 @@ INSTRUCCIONES:
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            if ($mode === 'sams') {
+                return [
+                    'success' => true,
+                    'error' => null,
+                    'message' => $this->buildSamsLocalFallbackMessage('unexpected_error'),
+                ];
+            }
+
             return [
                 'success' => false,
                 'error' => 'Error al comunicarse con Gemini: ' . $e->getMessage(),
