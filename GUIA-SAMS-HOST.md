@@ -49,6 +49,14 @@ php artisan cache:clear
 composer dev
 ```
 
+> Nota: `composer dev` ya no depende de `php artisan pail`, por lo que funciona en Windows sin la extension `pcntl`.
+
+Si quieres ver logs en tiempo real en entornos compatibles (Linux/macOS), puedes usar:
+
+```bash
+composer logs
+```
+
 ### 5) Abrir en navegador
 
 Abre:
