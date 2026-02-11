@@ -1334,7 +1334,12 @@
                 this.scrollToBottom();
                 
                 try {
-                    const response = await fetch('{{ route('gemini.chat') }}', {
+                    const baseHistory = this.messages.slice(0, -1).map(m => ({
+                        role: m.role,
+                        text: m.text
+                    }));
+
+                    const sendChatRequest = (modeToUse) => fetch('{{ route('gemini.chat') }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1343,50 +1348,85 @@
                         },
                         body: JSON.stringify({
                             message: message,
-                            history: this.messages.slice(0, -1).map(m => ({
-                                role: m.role,
-                                text: m.text
-                            })),
-                            mode: this.mode
+                            history: baseHistory,
+                            mode: modeToUse
                         })
                     });
 
-                    let data = null;
-                    const contentType = response.headers.get('content-type') || '';
-
-                    if (contentType.includes('application/json')) {
-                        data = await response.json();
-                    } else {
+                    const parseChatResponse = async (response) => {
+                        const contentType = response.headers.get('content-type') || '';
+                        if (contentType.includes('application/json')) {
+                            return await response.json();
+                        }
                         const rawBody = await response.text();
-                        data = {
+                        return {
                             success: false,
                             error: rawBody
                                 ? `Respuesta no válida del servidor (HTTP ${response.status}).`
                                 : null
                         };
-                    }
+                    };
+
+                    const getHttpErrorMessage = (response, data) => {
+                        let errorMsg = data?.error || data?.message || null;
+                        if (errorMsg) return errorMsg;
+
+                        if (response.status === 419) {
+                            return 'La sesión expiró. Recarga la página e inicia sesión de nuevo.';
+                        }
+                        if (response.status === 503) {
+                            return 'El servicio de Gemini no está disponible. Intenta nuevamente en unos minutos.';
+                        }
+                        if (response.status === 500) {
+                            return 'Error interno del servidor. Por favor, intenta más tarde.';
+                        }
+                        return `Error del servidor (HTTP ${response.status}).`;
+                    };
+
+                    let activeMode = this.mode;
+                    let response = await sendChatRequest(activeMode);
+                    let data = await parseChatResponse(response);
 
                     if (!response.ok) {
-                        let errorMsg = data?.error || data?.message || null;
+                        let errorMsg = getHttpErrorMessage(response, data);
+                        const normalizedError = (errorMsg || '').toLowerCase();
+                        const invalidApiKeyInFullMode = activeMode === 'full' && (
+                            normalizedError.includes('api key') ||
+                            normalizedError.includes('gemini_api_key') ||
+                            normalizedError.includes('not valid') ||
+                            normalizedError.includes('invalid') ||
+                            normalizedError.includes('no es válida') ||
+                            normalizedError.includes('no es valida')
+                        );
 
-                        if (!errorMsg) {
-                            if (response.status === 419) {
-                                errorMsg = 'La sesión expiró. Recarga la página e inicia sesión de nuevo.';
-                            } else if (response.status === 503) {
-                                errorMsg = 'El servicio de Gemini no está disponible. Intenta nuevamente en unos minutos.';
-                            } else if (response.status === 500) {
-                                errorMsg = 'Error interno del servidor. Por favor, intenta más tarde.';
-                            } else {
-                                errorMsg = `Error del servidor (HTTP ${response.status}).`;
+                        if (invalidApiKeyInFullMode) {
+                            this.mode = 'sams';
+                            this.messages.push({
+                                role: 'assistant',
+                                text: '⚠️ Modo Full no disponible por API Key inválida. Cambié automáticamente a Modo SAMS para mantener el asistente funcionando.'
+                            });
+
+                            activeMode = 'sams';
+                            response = await sendChatRequest(activeMode);
+                            data = await parseChatResponse(response);
+
+                            if (!response.ok) {
+                                errorMsg = getHttpErrorMessage(response, data);
+                                this.messages.push({
+                                    role: 'assistant',
+                                    text: '❌ ' + errorMsg
+                                });
+                                console.error('Error HTTP de Gemini (retry SAMS):', { status: response.status, data });
+                                return;
                             }
+                        } else {
+                            this.messages.push({
+                                role: 'assistant',
+                                text: '❌ ' + errorMsg
+                            });
+                            console.error('Error HTTP de Gemini:', { status: response.status, data });
+                            return;
                         }
-
-                        this.messages.push({
-                            role: 'assistant',
-                            text: '❌ ' + errorMsg
-                        });
-                        console.error('Error HTTP de Gemini:', { status: response.status, data });
-                        return;
                     }
 
                     if (data?.success) {

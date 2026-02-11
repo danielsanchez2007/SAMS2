@@ -1229,8 +1229,19 @@ INSTRUCCIONES:
             
             $errorMessage = null;
             
-            if ($statusCode === 401 || $statusCode === 403) {
-                $errorMessage = 'La API Key de Gemini no es válida o no tiene permisos. Verifica la configuración en el archivo .env (GEMINI_API_KEY).';
+            $apiErrorRaw = (string) ($errorData['error']['message'] ?? '');
+            $apiErrorLower = mb_strtolower($apiErrorRaw, 'UTF-8');
+            $isInvalidApiKeyError =
+                str_contains($apiErrorLower, 'api key not valid') ||
+                str_contains($apiErrorLower, 'invalid api key') ||
+                str_contains($apiErrorLower, 'api_key_invalid') ||
+                (str_contains($apiErrorLower, 'api key') && (
+                    str_contains($apiErrorLower, 'not valid') ||
+                    str_contains($apiErrorLower, 'invalid')
+                ));
+
+            if ($statusCode === 401 || $statusCode === 403 || $isInvalidApiKeyError) {
+                $errorMessage = 'La API Key de Gemini no es válida o no tiene permisos. Actualiza GEMINI_API_KEY en .env o usa el Modo SAMS.';
             } elseif ($statusCode === 429) {
                 $errorMessage = 'Se excedió el límite de solicitudes a Gemini. Por favor, espera un momento e intenta nuevamente.';
             } elseif ($statusCode === 400) {
