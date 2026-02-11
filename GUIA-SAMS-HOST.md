@@ -21,6 +21,7 @@ APP_PORT=8000
 VITE_HOST=sams
 VITE_PORT=5173
 VITE_BIND_HOST=0.0.0.0
+VITE_DEV_SERVER_URL=http://sams:5173
 ```
 
 ### 2) Registrar el nombre `sams` en tu sistema
