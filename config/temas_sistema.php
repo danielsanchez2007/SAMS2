@@ -8,7 +8,7 @@ return [
     /*
     | Tema por defecto cuando no hay ninguno seleccionado.
     */
-    'default' => 'indigo',
+    'default' => 'custom_p6',
 
     /*
     | Temas disponibles. Solo megadmin puede cambiar el tema.
@@ -428,13 +428,13 @@ return [
         'custom_editable' => [
             'nombre' => 'Personalizado',
             'editable' => true,
-            'from' => '#4f46e5',
-            'to' => '#7c3aed',
-            'primary' => '#6366f1',
-            'primary_hover' => '#4f46e5',
-            'primary_light' => 'rgba(99, 102, 241, 0.2)',
-            'primary_text' => '#a5b4fc',
-            'ring' => '99, 102, 241',
+            'from' => '#005870',
+            'to' => '#2dbae1',
+            'primary' => '#1b819d',
+            'primary_hover' => '#005870',
+            'primary_light' => 'rgba(27, 129, 157, 0.2)',
+            'primary_text' => '#6bc5e1',
+            'ring' => '27, 129, 157',
         ],
     ],
 

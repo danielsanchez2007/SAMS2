@@ -27,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
     {
         View::composer('layouts.app', function ($view) {
             $key = config('temas_sistema.cache_key', 'sistema_tema_color');
-            $temaKey = Cache::get($key, config('temas_sistema.default', 'indigo'));
+            $temaKey = Cache::get($key, config('temas_sistema.default', 'custom_p6'));
             $temaConfig = \App\Helpers\TemaHelper::temaActual();
             $logoMain = Cache::get(config('temas_sistema.logo_main_cache_key', 'sistema_logo_principal'));
             $logoSecondary = Cache::get(config('temas_sistema.logo_secondary_cache_key', 'sistema_logo_secundario'));

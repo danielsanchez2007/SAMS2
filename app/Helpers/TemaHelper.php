@@ -29,11 +29,11 @@ class TemaHelper
     public static function normalizar(array $tema): array
     {
         if (isset($tema['from'], $tema['to']) && empty($tema['colores'])) {
-            $tema['gradient_full'] = $tema['gradient_full'] ?? 'linear-gradient(to right, ' . ($tema['from'] ?? '#4f46e5') . ', ' . ($tema['to'] ?? '#7c3aed') . ')';
+            $tema['gradient_full'] = $tema['gradient_full'] ?? 'linear-gradient(to right, ' . ($tema['from'] ?? '#005870') . ', ' . ($tema['to'] ?? '#2dbae1') . ')';
             return $tema;
         }
 
-        $colores = $tema['colores'] ?? [$tema['from'] ?? '#4f46e5', $tema['to'] ?? '#7c3aed'];
+        $colores = $tema['colores'] ?? [$tema['from'] ?? '#005870', $tema['to'] ?? '#2dbae1'];
         $c1 = $colores[0];
         $cLast = $colores[count($colores) - 1];
         $cPrimary = $colores[min(1, count($colores) - 1)] ?? $cLast;
@@ -91,7 +91,7 @@ class TemaHelper
 
         $customColores = ($custom && is_array($custom) && count($custom) >= 2)
             ? $custom
-            : ['#4f46e5', '#7c3aed'];
+            : ['#005870', '#2dbae1'];
         $out['custom_editable'] = self::normalizar([
             'nombre' => 'Personalizado',
             'editable' => true,
@@ -109,8 +109,8 @@ class TemaHelper
             $cols = \Illuminate\Support\Facades\Cache::get($cacheKey);
             $cols = ($cols && is_array($cols) && count($cols) >= $n) ? $cols : null;
             if (!$cols) {
-                $defaults = ['#4f46e5', '#7c3aed', '#6366f1', '#22c55e', '#f59e0b', '#ec4899'];
-                $cols = array_slice(array_pad($defaults, $n, '#4f46e5'), 0, $n);
+                $defaults = ['#005870', '#1b819d', '#2dbae1', '#2dbae1', '#1b819d', '#096b86'];
+                $cols = array_slice(array_pad($defaults, $n, '#005870'), 0, $n);
             }
             $out[$key] = self::normalizar([
                 'nombre' => 'Personalizado',
@@ -130,10 +130,11 @@ class TemaHelper
     {
         $key = \Illuminate\Support\Facades\Cache::get(
             config('temas_sistema.cache_key', 'sistema_tema_color'),
-            config('temas_sistema.default', 'indigo')
+            config('temas_sistema.default', 'custom_p6')
         );
         $todos = self::todosTemas();
-        $tema = $todos[$key] ?? $todos['indigo'] ?? [];
+        $fallbackKey = config('temas_sistema.default', 'custom_p6');
+        $tema = $todos[$key] ?? $todos[$fallbackKey] ?? $todos['indigo'] ?? [];
         return self::normalizar($tema);
     }
 }
