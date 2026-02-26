@@ -6,6 +6,7 @@ use App\Models\EquipoBaja;
 use App\Models\Equipo;
 use App\Models\EquipoDebaja;
 use App\Models\EstadoRemision;
+use App\Models\CodigoDisponible;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -52,23 +53,25 @@ class EquiposBajaController extends Controller
         $data = $request->validate([
             'equipo_id' => ['required', 'exists:equipos,id'],
             'fecha_baja' => ['required', 'date'],
-            'acta_numero' => ['nullable', 'string', 'max:255'],
             'resumen_baja' => ['required', 'string'],
             'responsable_inventario_nombre' => ['nullable', 'string', 'max:255'],
             'responsable_inventario_cc' => ['nullable', 'string', 'max:255'],
             'gerente_administrativa_nombre' => ['nullable', 'string', 'max:255'],
             'gerente_administrativa_cc' => ['nullable', 'string', 'max:255'],
+            // Campos adicionales del formulario
+            'serial' => ['nullable', 'string'],
+            'estado' => ['nullable', 'string'],
+            'destino_final' => ['nullable', 'string'],
+            'responsable_cargo' => ['nullable', 'string'],
+            'gerente_cargo' => ['nullable', 'string'],
             'asistentes' => ['nullable', 'array'],
             'items_baja' => ['nullable', 'array'],
             'acta_html' => ['nullable', 'string'], // HTML del formato editable
         ]);
 
-        // Generar número de acta si no se proporciona
-        if (empty($data['acta_numero'])) {
-            $ultimoNumero = EquipoBaja::whereYear('fecha_baja', date('Y', strtotime($data['fecha_baja'])))
-                ->max('acta_numero');
-            $data['acta_numero'] = ($ultimoNumero ? (int)$ultimoNumero + 1 : 1);
-        }
+        // Generar número de acta automático y secuencial
+        $ultimoNumero = EquipoBaja::max('acta_numero');
+        $data['acta_numero'] = ($ultimoNumero ? (int)$ultimoNumero + 1 : 1);
 
         $equipoBaja = EquipoBaja::create($data);
 
@@ -87,11 +90,26 @@ class EquiposBajaController extends Controller
 
             $equipo->save();
 
+            // Cambiar el código del equipo a formato DB2
+            $codigoOriginal = $equipo->codigo;
+            $equipo->codigo = 'DB2';
+            $equipo->save();
+
+            // Liberar el código original automáticamente para que esté disponible para reutilizar
+            CodigoDisponible::create([
+                'empresa_id' => $equipo->empresa_id,
+                'codigo' => $codigoOriginal,
+                'tipo' => 'normal',
+                'utilizado' => false,
+                'motivo' => 'Código liberado por baja de equipo: ' . $equipo->descripcion,
+                'equipo_original_id' => $equipo->id,
+            ]);
+
             // Crear o actualizar el registro en equipos_debaja para que aparezca en la pestaña "Equipos debaja"
             $datosDebaja = [
                 'empresa_id' => $equipo->empresa_id,
-                'codigo_original' => $equipo->codigo,
-                'codigo' => $equipo->codigo, // se mantiene el mismo código; si luego quieres prefijo DB, se puede ajustar aquí
+                'codigo_original' => $codigoOriginal,
+                'codigo' => 'DB2', // Cambiar a formato DB2
                 'tipo_item_id' => $equipo->tipo_item_id,
                 'tipo_equipo_id' => $equipo->tipo_equipo_id,
                 'codigo_bloqueado' => $equipo->codigo_bloqueado,
@@ -151,13 +169,115 @@ class EquiposBajaController extends Controller
     }
 
     /**
-     * Devuelve una vista HTML editable del formato ACTA DE BAJA.
-     */
-    public function formatoHtml(Equipo $equipo): View
+     * Muestra el formato HTML de un equipo de baja específico (por ID de acta EquipoBaja).
+     */     
+    public function formatoHtml(EquipoBaja $equipoBaja): View
     {
+        $equipo = $equipoBaja->equipo->load('sede', 'tipoEquipo');
         return view('equipos-baja.formato-html', [
-            'equipo' => $equipo->load('sede', 'tipoEquipo'),
+            'equipo' => $equipo,
+            'equipoBaja' => $equipoBaja,
+            'proximaActa' => $equipoBaja->acta_numero,
         ]);
+    }
+
+    /**
+     * Muestra el formato HTML del acta de baja por ID de equipo (para Inspeccionar / acta nueva).
+     * Si ya existe un EquipoBaja para ese equipo lo usa; si no, muestra el formato vacío con próxima acta.
+     */
+    public function formatoHtmlPorEquipo(Equipo $equipo): View
+    {
+        $equipo->load('sede', 'tipoEquipo');
+        $equipoBaja = EquipoBaja::where('equipo_id', $equipo->id)->first();
+        $proximaActa = $equipoBaja
+            ? $equipoBaja->acta_numero
+            : (EquipoBaja::max('acta_numero') ? (int) EquipoBaja::max('acta_numero') + 1 : 1);
+        if (! $equipoBaja) {
+            $equipoBaja = new EquipoBaja([
+                'equipo_id' => $equipo->id,
+                'acta_numero' => $proximaActa,
+            ]);
+        }
+        return view('equipos-baja.formato-html', [
+            'equipo' => $equipo,
+            'equipoBaja' => $equipoBaja,
+            'proximaActa' => $proximaActa,
+        ]);
+    }
+
+    /**
+     * Obtiene el próximo número de acta para el modal.
+     */
+    public function getProximaActa(): JsonResponse
+    {
+        $ultimoNumero = EquipoBaja::max('acta_numero');
+        $proximaActa = ($ultimoNumero ? (int)$ultimoNumero + 1 : 1);
+        
+        return response()->json([
+            'proxima_acta' => $proximaActa
+        ]);
+    }
+
+    /**
+     * Busca un registro de baja por el ID del equipo.
+     */
+    public function buscarPorEquipo($equipoId): JsonResponse
+    {
+        $equipoBaja = EquipoBaja::where('equipo_id', $equipoId)->first();
+        
+        if ($equipoBaja) {
+            return response()->json([
+                'success' => true,
+                'equipoBaja' => $equipoBaja
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'No se encontró registro de baja para este equipo'
+        ]);
+    }
+
+    /**
+     * Exporta el listado de equipos de baja en formato PDF.
+     */
+    public function exportarPdf(Request $request): View
+    {
+        $search = $request->get('q', '');
+        $empresaId = $request->get('empresa_id');
+        $sedeId = $request->get('sede_id');
+        $bodegaId = $request->get('bodega_id');
+        
+        $equiposBaja = EquipoBaja::with(['equipo.tipoEquipo', 'equipo.sede'])
+            ->when($search, function ($q) use ($search) {
+                $q->whereHas('equipo', function ($query) use ($search) {
+                    $query->where('codigo', 'like', "%{$search}%")
+                        ->orWhere('descripcion', 'like', "%{$search}%");
+                })->orWhere('resumen_baja', 'like', "%{$search}%");
+            })
+            ->when($empresaId, function ($q) use ($empresaId) {
+                $q->whereHas('equipo', function ($query) use ($empresaId) {
+                    $query->where('empresa_id', $empresaId);
+                });
+            })
+            ->when($sedeId, function ($q) use ($sedeId) {
+                $q->whereHas('equipo', function ($query) use ($sedeId) {
+                    $query->where('sede_id', $sedeId);
+                });
+            })
+            ->when($bodegaId, function ($q) use ($bodegaId) {
+                $q->whereHas('equipo', function ($query) use ($bodegaId) {
+                    $query->where('bodega_id', $bodegaId);
+                });
+            })
+            ->orderByDesc('fecha_baja')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $logoMain = Cache::get(config('temas_sistema.logo_main_cache_key', 'sistema_logo_principal'));
+        $logoSecondary = Cache::get(config('temas_sistema.logo_secondary_cache_key', 'sistema_logo_secundario'));
+
+        return view('equipos-baja.export-pdf', compact('equiposBaja', 'logoMain', 'logoSecondary'));
     }
 
     /**

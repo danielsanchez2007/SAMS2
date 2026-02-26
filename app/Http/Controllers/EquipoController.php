@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use App\Models\Equipo;
 use App\Models\EquipoDebaja;
+use App\Models\EquipoBaja;
 use App\Models\MaterialDidactico;
 use App\Models\CodigoDisponible;
 use App\Models\TipoItem;
@@ -272,7 +273,7 @@ class EquipoController extends Controller
         }
         return null;
     }
-
+        
     /**
      * Ruta absoluta del archivo de imagen del equipo (para incrustar en PDF).
      */
@@ -1900,12 +1901,23 @@ class EquipoController extends Controller
     /**
      * Traspasa un equipo a equipos_debaja o material_didactico.
      */
-    public function traspasar(Request $request, Equipo $equipo): RedirectResponse
+    public function traspasar(Request $request, Equipo $equipo)
     {
-        $request->validate([
-            'destino' => 'required|in:equipos_debaja,material_didactico,auditoria',
-            'numero_codigo' => 'required|integer|min:1',
-        ]);
+        try {
+            $validated = $request->validate([
+                'destino' => 'required|in:equipos_debaja,material_didactico,auditoria',
+                'numero_codigo' => 'required|integer|min:1',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Si es AJAX, devolver JSON con errores de validación
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validación fallida: ' . implode(', ', $e->errors()['numero_codigo'] ?? ['Error desconocido'])
+                ], 422);
+            }
+            throw $e;
+        }
 
         $codigoOriginal = $equipo->codigo;
         $empresaId = $equipo->empresa_id;
@@ -2019,6 +2031,13 @@ class EquipoController extends Controller
             'equipo_original_id' => $equipo->id,
             'codigo_original' => $codigoOriginal,
             'codigo' => $codigoNuevo,
+            // Datos de inspección
+            'fecha_inspeccion' => $request->get('inspeccion_fecha_inspeccion'),
+            'motivo_baja' => $request->get('inspeccion_motivo_baja'),
+            'responsable_nombre' => $request->get('inspeccion_responsable_nombre'),
+            'responsable_cedula' => $request->get('inspeccion_responsable_cedula'),
+            'gerente_nombre' => $request->get('inspeccion_gerente_nombre'),
+            'gerente_cedula' => $request->get('inspeccion_gerente_cedula'),
         ];
 
         // Guardar código original en códigos disponibles
@@ -2040,6 +2059,22 @@ class EquipoController extends Controller
             
         if ($request->destino === 'equipos_debaja') {
             EquipoDebaja::create($datosEquipo);
+            
+            // Crear el acta de baja
+            $ultimoNumero = EquipoBaja::max('acta_numero');
+            $actaNumero = ($ultimoNumero ? (int)$ultimoNumero + 1 : 1);
+            
+            EquipoBaja::create([
+                'equipo_id' => $equipo->id,
+                'fecha_baja' => $request->get('inspeccion_fecha_inspeccion') ?: now()->format('Y-m-d'),
+                'acta_numero' => $actaNumero,
+                'resumen_baja' => $request->get('inspeccion_motivo_baja') ?: 'Equipo dado de baja',
+                'responsable_inventario_nombre' => $request->get('inspeccion_responsable_nombre'),
+                'responsable_inventario_cc' => $request->get('inspeccion_responsable_cedula'),
+                'gerente_administrativa_nombre' => $request->get('inspeccion_gerente_nombre'),
+                'gerente_administrativa_cc' => $request->get('inspeccion_gerente_cedula'),
+            ]);
+            
                 $mensaje = "Equipo traspasado a Equipos debaja correctamente. Nuevo código: {$codigoNuevo}";
                 $nuevoEquipoCreado = true;
             } elseif ($request->destino === 'material_didactico') {
@@ -2102,14 +2137,29 @@ class EquipoController extends Controller
 
             // Solo eliminar el equipo original si el nuevo se creó correctamente
             if ($nuevoEquipoCreado) {
-                // Eliminar el equipo original SIN eliminar las imágenes físicas
-                // Solo eliminar el registro de la base de datos, no los archivos
-                $equipo->imagen_general = null;
-                $equipo->imagen_etiqueta = null;
-                $equipo->manual_fabricante = null;
-                $equipo->certificacion_fabricante = null;
-                $equipo->save();
-        $equipo->delete();
+                if ($request->destino === 'equipos_debaja') {
+                    // Para equipos de baja, no eliminar el equipo, solo cambiar tipo_registro
+                    // para que no aparezca en la tabla principal pero aún exista
+                    $equipo->tipo_registro = 'equipos_debaja';
+                    
+                    // Opcional: actualizar el estado de remisión a uno que contenga "baja" si existe
+                    $estadoBajaId = EstadoRemision::where('nombre', 'like', '%baja%')->value('id');
+                    if ($estadoBajaId) {
+                        $equipo->estado_remision_id = $estadoBajaId;
+                    }
+                    
+                    $equipo->save();
+                } else {
+                    // Para otros destinos (material_didactico, auditoria), eliminar el equipo original
+                    // Eliminar el equipo original SIN eliminar las imágenes físicas
+                    // Solo eliminar el registro de la base de datos, no los archivos
+                    $equipo->imagen_general = null;
+                    $equipo->imagen_etiqueta = null;
+                    $equipo->manual_fabricante = null;
+                    $equipo->certificacion_fabricante = null;
+                    $equipo->save();
+                    $equipo->delete();
+                }
             }
             
             DB::commit();
@@ -2119,9 +2169,25 @@ class EquipoController extends Controller
             \Log::error("Destino: " . $request->destino);
             \Log::error("Datos del equipo: " . json_encode($datosEquipo));
             \Log::error("Stack trace: " . $e->getTraceAsString());
+            
+            // Si es petición AJAX, devolver JSON
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Error al traspasar el equipo: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->withErrors(['numero_codigo' => 'Error al traspasar el equipo: ' . $e->getMessage()]);
         }
 
+        // Si es petición AJAX, devolver JSON
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje
+            ]);
+        }
 
         // Redirigir a la pestaña correcta según el destino
         $ruta = match($request->destino) {
@@ -2226,7 +2292,7 @@ class EquipoController extends Controller
 
         // Obtener códigos disponibles para el destino seleccionado
         $codigosDisponibles = [];
-        if ($destino) {
+        if ($destino && $empresaId) {
             $prefijo = match($destino) {
                 'equipos_debaja' => 'DB',
                 'material_didactico' => 'MD',
@@ -2248,6 +2314,15 @@ class EquipoController extends Controller
                         'descripcion' => $c->descripcion_original
                     ];
                 })->toArray();
+                
+                // Si no hay códigos disponibles, generar el siguiente automáticamente
+                if (empty($codigosDisponibles)) {
+                    $proximoCodigo = $this->generarCodigoConPrefijo($prefijo, $empresaId);
+                    $codigosDisponibles[] = [
+                        'codigo' => $proximoCodigo,
+                        'descripcion' => null
+                    ];
+                }
             }
         }
 
@@ -2508,7 +2583,7 @@ class EquipoController extends Controller
             $equipoOriginal = $codigoDisponible->equipoOriginal;
             
             // Cargar todas las relaciones necesarias
-            $equipoOriginal->load(['tipoItem', 'tipoEquipo', 'estadoRemision', 'proveedor', 'fabricante', 'empresa', 'sede', 'bodega', 'usoItem']);
+            $equipoOriginal->load(['tipoItem', 'tipoEquipo', 'estadoRemision', 'proveedor', 'fabricante', 'empresa', 'sede', 'bodega', 'usoItem']);     
             
             // Preparar todos los datos del equipo original
             $response['datos_equipo'] = [
@@ -3005,5 +3080,90 @@ class EquipoController extends Controller
             'success' => true,
             'message' => 'Contraseña correcta.'
         ]);
+    }
+
+    /**
+     * Obtiene la hoja de vida pasada de un equipo.
+     */
+    public function hojaVidaPasada($equipoId): JsonResponse
+    {
+        $equipo = Equipo::find($equipoId);
+        
+        if (!$equipo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Equipo no encontrado'
+            ]);
+        }
+
+        // Buscar hoja de vida pasada en el almacen de archivos
+        $hojaVida = \App\Models\AlmacenArchivo::where('equipo_id', $equipoId)
+            ->whereHas('etiqueta', function($query) {
+                $query->where('nombre', 'like', '%Hoja de Vida%');
+            })
+            ->where('estado', 'pasada')
+            ->first();
+
+        if ($hojaVida) {
+            return response()->json([
+                'success' => true,
+                'hojaVida' => $hojaVida->contenido_html ?? $hojaVida->contenido ?? '<p>No hay contenido disponible</p>'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No se encontró hoja de vida pasada para este equipo'
+        ]);
+    }
+
+    /**
+     * Descarga la hoja de vida pasada de un equipo.
+     */
+    public function descargarHojaVidaPasada($equipoId)
+    {
+        $equipo = Equipo::find($equipoId);
+        
+        if (!$equipo) {
+            abort(404, 'Equipo no encontrado');
+        }
+
+        // Buscar hoja de vida pasada en el almacen de archivos
+        $hojaVida = \App\Models\AlmacenArchivo::where('equipo_id', $equipoId)
+            ->whereHas('etiqueta', function($query) {
+                $query->where('nombre', 'like', '%Hoja de Vida%');
+            })
+            ->where('estado', 'pasada')
+            ->first();
+
+        if (!$hojaVida) {
+            abort(404, 'Hoja de vida pasada no encontrada');
+        }
+
+        // Generar PDF desde el contenido HTML
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($hojaVida->contenido_html ?? $hojaVida->contenido ?? '<p>No hay contenido disponible</p>');
+        
+        return $pdf->download('hoja_vida_pasada_' . $equipo->codigo . '.pdf');
+    }
+
+    /**
+     * Muestra la vista de formatos de hojas de vida para un equipo.
+     */
+    public function formatosHojasVida($equipoId): View
+    {
+        $equipo = Equipo::find($equipoId);
+        
+        if (!$equipo) {
+            abort(404, 'Equipo no encontrado');
+        }
+
+        // Buscar hojas de vida asignadas al tipo de equipo
+        $hojasVida = \App\Models\AlmacenArchivo::where('tipo_equipo_id', $equipo->tipo_equipo_id)
+            ->whereHas('etiqueta', function($query) {
+                $query->where('nombre', 'like', '%Hoja de Vida%');
+            })
+            ->get();
+
+        return view('equipos.formatos-hojas-vida', compact('equipo', 'hojasVida'));
     }
 }

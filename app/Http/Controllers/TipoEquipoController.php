@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Smalot\PdfParser\Parser as PdfParser;
 
 class TipoEquipoController extends Controller
 {
@@ -176,11 +177,73 @@ class TipoEquipoController extends Controller
             Storage::disk('local')->delete($tipoEquipo->formato_archivo);
         }
         $ruta = $file->store($dir, 'local');
-        $tipoEquipo->update(['formato_archivo' => $ruta]);
+
+        $formatoHtml = null;
+        try {
+            $fullPath = Storage::disk('local')->path($ruta);
+            $parser = new PdfParser();
+            $pdf = $parser->parseFile($fullPath);
+            $text = $pdf->getText();
+            $formatoHtml = self::buildFormatoHtmlFromPdfText($text, $tipoEquipo->nombre);
+        } catch (\Throwable $e) {
+            \Log::warning('No se pudo extraer texto del PDF de inspección para tipo_equipo ' . $tipoEquipo->id . ': ' . $e->getMessage());
+        }
+
+        $tipoEquipo->update([
+            'formato_archivo' => $ruta,
+            'formato_html' => $formatoHtml,
+        ]);
 
         return redirect()
             ->route('tipo-equipos.index')
             ->with('success', 'Formato aplicado correctamente para "' . $tipoEquipo->nombre . '".');
+    }
+
+    /**
+     * Construye el HTML del formato de inspección a partir del texto extraído del PDF.
+     */
+    public static function buildFormatoHtmlFromPdfText(string $text, string $tipoNombre): string
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $text);
+        $criterios = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            if (mb_strlen($line) < 3) {
+                continue;
+            }
+            $criterios[] = htmlspecialchars($line, ENT_QUOTES, 'UTF-8');
+        }
+        if (empty($criterios)) {
+            $criterios = ['Criterios extraídos del PDF (edite según corresponda).'];
+        }
+
+        $rows = '';
+        // Fila de fechas
+        $rows .= '<tr><th colspan="2">Fecha de la inspección</th><th colspan="2">Validez de la inspección</th></tr>';
+        $rows .= '<tr><td colspan="2" class="editable" contenteditable="true"></td><td colspan="2" class="editable" contenteditable="true"></td></tr>';
+        // Encabezados de criterios y cumplimiento C / NC + hallazgos (similar al PDF)
+        $rows .= '<tr>';
+        $rows .= '<th colspan="2">CRITERIOS DE INSPECCIÓN</th>';
+        $rows .= '<th colspan="2">CUMPLIMIENTO</th>';
+        $rows .= '<th rowspan="2">HALLAZGOS</th>';
+        $rows .= '</tr>';
+        $rows .= '<tr>';
+        $rows .= '<th class="section-header">C</th>';
+        $rows .= '<th class="section-header">NC</th>';
+        $rows .= '</tr>';
+        foreach ($criterios as $c) {
+            $rows .= '<tr>';
+            $rows .= '<td colspan="2">' . $c . '</td>';
+            $rows .= '<td class="editable" contenteditable="true"></td>'; // C
+            $rows .= '<td class="editable" contenteditable="true"></td>'; // NC
+            $rows .= '<td class="editable" contenteditable="true"></td>'; // Hallazgos
+            $rows .= '</tr>';
+        }
+
+        return '<table><tbody>' . $rows . '</tbody></table>';
     }
 
     /**
@@ -191,7 +254,7 @@ class TipoEquipoController extends Controller
         if ($tipoEquipo->formato_archivo && Storage::disk('local')->exists($tipoEquipo->formato_archivo)) {
             Storage::disk('local')->delete($tipoEquipo->formato_archivo);
         }
-        $tipoEquipo->update(['formato_archivo' => null]);
+        $tipoEquipo->update(['formato_archivo' => null, 'formato_html' => null]);
         return redirect()
             ->route('tipo-equipos.index')
             ->with('success', 'Formato eliminado para "' . $tipoEquipo->nombre . '".');

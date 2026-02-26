@@ -388,31 +388,48 @@
                     </div>
                 </div>
 
-                {{-- Imagen general --}}
+                {{-- Imagen 1 - General --}}
                 <div class="p-4 border border-[#e3e3e0] dark:border-[#3E3E3A] rounded-lg">
                     <label class="flex items-center gap-2 cursor-pointer mb-2">
                         <input type="checkbox" name="tiene_imagen_general" x-model="form.tiene_imagen_general" value="1" class="rounded border-[#e3e3e0]">
-                        <span class="text-sm font-medium">¿Tiene imagen general?</span>
+                        <span class="text-sm font-medium">Imagen 1 – General del equipo</span>
                     </label>
-                    <div x-show="form.tiene_imagen_general" x-cloak class="space-y-2">
-                        <template x-if="form.imagen_general">
-                            <div><img :src="form.imagen_general && form.imagen_general.startsWith('storage/') ? '{{ asset('storage') }}/' + form.imagen_general.replace('storage/', '') : (form.imagen_general ? '{{ asset('') }}' + form.imagen_general : '')" alt="Imagen actual" class="max-h-24 rounded border border-[#e3e3e0]"></div>
-                        </template>
-                        <input type="file" name="imagen_general_file" accept="image/*" class="w-full text-sm">
+                    <div class="space-y-2">
+                        {{-- Vista previa: guardada o recién seleccionada --}}
+                        <div class="flex items-start gap-2">
+                            <template x-if="previewImagenGeneral">
+                                <img :src="previewImagenGeneral" alt="Vista previa imagen general" class="max-h-28 w-28 rounded border border-[#e3e3e0] dark:border-[#3E3E3A] object-cover">
+                            </template>
+                            <template x-if="!previewImagenGeneral && form.imagen_general">
+                                <img :src="form.imagen_general && form.imagen_general.startsWith('storage/') ? '{{ asset('storage') }}/' + form.imagen_general.replace('storage/', '') : (form.imagen_general ? '{{ rtrim(url('/'), '/') }}/' + form.imagen_general.replace(/^\/+/, '') : '')" alt="Imagen actual" class="max-h-28 w-28 rounded border border-[#e3e3e0] dark:border-[#3E3E3A] object-cover" onerror="this.style.display='none'">
+                            </template>
+                            <div class="flex-1 min-w-0">
+                                <input type="file" name="imagen_general_file" accept="image/*" class="w-full text-sm"
+                                    @change="form.tiene_imagen_general = !!$event.target.files?.length; previewImagenGeneral = $event.target.files?.[0] ? URL.createObjectURL($event.target.files[0]) : null">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {{-- Imagen de etiqueta --}}
+                {{-- Imagen 2 - Etiqueta --}}
                 <div class="p-4 border border-[#e3e3e0] dark:border-[#3E3E3A] rounded-lg">
                     <label class="flex items-center gap-2 cursor-pointer mb-2">
                         <input type="checkbox" name="tiene_imagen_etiqueta" x-model="form.tiene_imagen_etiqueta" value="1" class="rounded border-[#e3e3e0]">
-                        <span class="text-sm font-medium">¿Tiene imagen de etiqueta?</span>
+                        <span class="text-sm font-medium">Imagen 2 – Etiqueta del equipo</span>
                     </label>
-                    <div x-show="form.tiene_imagen_etiqueta" x-cloak class="space-y-2">
-                        <template x-if="form.imagen_etiqueta">
-                            <div><img :src="form.imagen_etiqueta && form.imagen_etiqueta.startsWith('storage/') ? '{{ asset('storage') }}/' + form.imagen_etiqueta.replace('storage/', '') : (form.imagen_etiqueta ? '{{ asset('') }}' + form.imagen_etiqueta : '')" alt="Etiqueta actual" class="max-h-24 rounded border border-[#e3e3e0]"></div>
-                        </template>
-                        <input type="file" name="imagen_etiqueta_file" accept="image/*" class="w-full text-sm">
+                    <div class="space-y-2">
+                        <div class="flex items-start gap-2">
+                            <template x-if="previewImagenEtiqueta">
+                                <img :src="previewImagenEtiqueta" alt="Vista previa imagen etiqueta" class="max-h-28 w-28 rounded border border-[#e3e3e0] dark:border-[#3E3E3A] object-cover">
+                            </template>
+                            <template x-if="!previewImagenEtiqueta && form.imagen_etiqueta">
+                                <img :src="form.imagen_etiqueta && form.imagen_etiqueta.startsWith('storage/') ? '{{ asset('storage') }}/' + form.imagen_etiqueta.replace('storage/', '') : (form.imagen_etiqueta ? '{{ rtrim(url('/'), '/') }}/' + form.imagen_etiqueta.replace(/^\/+/, '') : '')" alt="Etiqueta actual" class="max-h-28 w-28 rounded border border-[#e3e3e0] dark:border-[#3E3E3A] object-cover" onerror="this.style.display='none'">
+                            </template>
+                            <div class="flex-1 min-w-0">
+                                <input type="file" name="imagen_etiqueta_file" accept="image/*" class="w-full text-sm"
+                                    @change="form.tiene_imagen_etiqueta = !!$event.target.files?.length; previewImagenEtiqueta = $event.target.files?.[0] ? URL.createObjectURL($event.target.files[0]) : null">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

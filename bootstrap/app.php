@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'sams2.auth' => \App\Http\Middleware\EnsureSams2Auth::class,
-            'sams2.mega_admin' => \App\Http\Middleware\EnsureMegaAdmin::class,
+            'sams2.mega_admin' => \App\Http\Middleware\CheckMegaAdmin::class,
             'sams2.admin' => \App\Http\Middleware\EnsureAdmin::class,
             'sams2.module' => \App\Http\Middleware\CheckModulePermission::class,
         ]);

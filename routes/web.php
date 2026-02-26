@@ -10,6 +10,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TipoEquipoController;
 use App\Http\Controllers\TipoItemController;
 use App\Http\Controllers\EquipoAuditoriaController;
+use App\Http\Controllers\EquiposBajaController;
 use App\Http\Controllers\UsoItemController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -261,6 +262,9 @@ Route::middleware(['sams2.auth'])->group(function () {
     Route::get('/equipos/{equipo}/hoja-vida-datos', [\App\Http\Controllers\EquipoController::class, 'hojaVidaDatos'])->name('equipos.hoja-vida.datos');
     Route::get('/equipos/{equipo}/hoja-vida', [\App\Http\Controllers\EquipoController::class, 'hojaVidaPdf'])->name('equipos.hoja-vida.pdf');
     Route::post('/equipos/{equipo}/hoja-vida', [\App\Http\Controllers\EquipoController::class, 'hojaVidaPdf'])->name('equipos.hoja-vida.pdf.post');
+    Route::get('/equipos/{equipo}/hoja-vida-pasada', [\App\Http\Controllers\EquipoController::class, 'hojaVidaPasada'])->name('equipos.hoja-vida-pasada');
+    Route::get('/equipos/{equipo}/hoja-vida-pasada-descargar', [\App\Http\Controllers\EquipoController::class, 'descargarHojaVidaPasada'])->name('equipos.hoja-vida-pasada-descargar');
+    Route::get('/equipos/{equipo}/formatos-hojas-vida', [\App\Http\Controllers\EquipoController::class, 'formatosHojasVida'])->name('equipos.formatos-hojas-vida');
     Route::post('/equipos/importar-pdf', [\App\Http\Controllers\EquipoController::class, 'importarPdf'])->name('equipos.importar-pdf');
     Route::get('/equipos/{equipo}/pdfs-almacen', [\App\Http\Controllers\EquipoController::class, 'getPdfsAlmacen'])->name('equipos.pdfs-almacen');
     Route::post('/equipos/asignar-pdf-tipo-equipo', [\App\Http\Controllers\EquipoController::class, 'asignarPdfTipoEquipo'])->name('equipos.asignar-pdf-tipo-equipo');
@@ -333,14 +337,20 @@ Route::middleware(['sams2.auth'])->group(function () {
     Route::get('/inspeccionar/tipo/{tipoEquipo}/equipos', [\App\Http\Controllers\InspeccionarController::class, 'equiposPorTipo'])->name('inspeccionar.tipo-equipos');
     Route::post('/inspeccionar/guardar', [\App\Http\Controllers\InspeccionarController::class, 'guardarInspeccion'])->name('inspeccionar.guardar');
     Route::delete('/inspeccionar/{inspeccion}', [\App\Http\Controllers\InspeccionarController::class, 'eliminar'])->name('inspeccionar.eliminar');
+    Route::get('/inspeccionar/inspeccion/{inspeccion}/contenido', [\App\Http\Controllers\InspeccionarController::class, 'contenidoInspeccion'])->name('inspeccionar.contenido');
     Route::get('/inspecciones/tipo/{tipoEquipo}/formato-html', [\App\Http\Controllers\InspeccionarController::class, 'formatoHtml'])->name('inspeccionar.formato-html');
     });
 
     Route::middleware(['sams2.module:equipos'])->group(function () {
-    Route::get('/equipos-baja', [\App\Http\Controllers\EquiposBajaController::class, 'index'])->name('equipos-baja.index');
-    Route::post('/equipos-baja', [\App\Http\Controllers\EquiposBajaController::class, 'store'])->name('equipos-baja.store');
-    Route::get('/equipos-baja/{equipo}/formato-html', [\App\Http\Controllers\EquiposBajaController::class, 'formatoHtml'])->name('equipos-baja.formato-html');
-    Route::get('/equipos-baja/{equipoBaja}/download', [\App\Http\Controllers\EquiposBajaController::class, 'download'])->name('equipos-baja.download');
+    Route::get('/equipos-baja', [EquiposBajaController::class, 'index'])->name('equipos-baja.index');
+    Route::post('/equipos-baja', [EquiposBajaController::class, 'store'])->name('equipos-baja.store');
+    Route::get('/equipos-baja/proxima-acta', [EquiposBajaController::class, 'getProximaActa'])->name('equipos-baja.proxima-acta');
+    Route::get('/equipos-baja/exportar-pdf', [EquiposBajaController::class, 'exportarPdf'])->name('equipos-baja.exportar-pdf');
+    Route::get('/equipos-baja/formato-html-por-equipo/{equipo}', [EquiposBajaController::class, 'formatoHtmlPorEquipo'])->name('equipos-baja.formato-html-por-equipo');
+    Route::get('/equipos-baja/{equipoBaja}/formato-html', [EquiposBajaController::class, 'formatoHtml'])->name('equipos-baja.formato-html');
+    Route::get('/equipos-baja/{equipoBaja}/formato-pdf', [EquiposBajaController::class, 'formatoPdf'])->name('equipos-baja.formato-pdf');
+    Route::get('/equipos-baja/buscar-por-equipo/{equipoId}', [EquiposBajaController::class, 'buscarPorEquipo'])->name('equipos-baja.buscar-por-equipo');
+    Route::get('/equipos-baja/{equipoBaja}/download', [EquiposBajaController::class, 'download'])->name('equipos-baja.download');
     });
 
     // Menú Personalizaciones del Sistema

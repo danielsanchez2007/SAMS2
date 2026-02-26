@@ -76,6 +76,15 @@
                                             </svg>
                                             <span>Seleccionar equipo</span>
                                         </button>
+                                        {{-- Reemplazar formato PDF de inspección para este tipo --}}
+                                        <button type="button"
+                                                @click="openModalFormato({{ $e->id }}, '{{ addslashes($e->nombre) }}', true)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-700/90 hover:bg-sky-500 text-white shadow-sm transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582M20 20v-5h-.581M5 9a7 7 0 0112.95-2M19 15a7 7 0 01-12.95 2"/>
+                                            </svg>
+                                            <span>Reemplazar formato</span>
+                                        </button>
                                     @else
                                         {{-- Aplicar nuevo PDF --}}
                                         <button type="button"
@@ -163,15 +172,31 @@
                                     <td class="py-2 px-3" x-text="eq.sede || '—'"></td>
                                     <td class="py-2 px-3" x-text="eq.estado || '—'"></td>
                                     <td class="py-2 px-3 text-right">
-                                        <button type="button"
-                                                @click="abrirInspeccion(eq)"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-sm transition">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
-                                            <span x-text="(eq.inspecciones_count || 0) > 0 ? 'Volver a inspeccionar' : 'Inspeccionar'"></span>
-                                        </button>
+                                        <div class="flex flex-wrap items-center justify-end gap-1.5">
+                                            <template x-if="(eq.inspecciones_count || 0) === 0">
+                                                <button type="button" @click="abrirInspeccion(eq)"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-sm transition">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                    <span>Inspeccionar</span>
+                                                </button>
+                                            </template>
+                                            <template x-if="(eq.inspecciones_count || 0) > 0 && puedeVolverAInspeccionar(eq)">
+                                                <button type="button" @click="abrirInspeccion(eq)"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-sm transition">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                    <span>Volver a inspeccionar</span>
+                                                </button>
+                                            </template>
+                                            <template x-if="(eq.inspecciones_count || 0) > 0 && !puedeVolverAInspeccionar(eq)">
+                                                <span class="text-xs text-slate-400" x-text="'Espere hasta ' + (eq.ultima_validez_inspeccion || '—')"></span>
+                                            </template>
+                                            <button type="button" @click="abrirDarDeBaja(eq)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-600/90 hover:bg-amber-500 text-white shadow-sm transition"
+                                                title="Dar de baja">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                <span>Dar de baja</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             </template>
@@ -325,62 +350,36 @@
         </div>
     </div>
 
-    {{-- Modal ACTA DE BAJA --}}
-    <div x-show="modalActaBaja" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 overflow-y-auto">
-        <div class="tema-modal-opaco bg-slate-900 rounded-2xl shadow-2xl w-full max-w-6xl my-8 border border-slate-700/60 flex flex-col max-h-[95vh]" @click.stop>
+    {{-- Modal ACTA DE BAJA: amplio y funcional, con indicación para el usuario --}}
+    <div x-show="modalActaBaja" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-3 bg-black/70 overflow-y-auto">
+        <div class="tema-modal-opaco bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl my-4 border border-slate-700/60 flex flex-col max-h-[94vh]" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 border-b border-slate-700/60 flex-shrink-0">
                 <div>
                     <h3 class="text-lg font-semibold text-slate-200">ACTA DE BAJA DE ELEMENTOS</h3>
                     <p class="text-xs text-slate-400 mt-1" x-show="inspeccionEquipoCodigo" x-text="'Equipo: ' + inspeccionEquipoCodigo"></p>
+                    <p class="text-xs text-amber-200/90 mt-1.5">Complete todos los campos del formato; el campo <strong>Calificación o Estado</strong> es el motivo de baja (obligatorio).</p>
                 </div>
-                <button type="button" @click="modalActaBaja = false" class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors" title="Cerrar">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button type="button" @click="modalActaBaja = false" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 text-xs font-medium hover:bg-slate-800 transition">Cancelar</button>
+                    <button type="button" @click="guardarActaBaja()" :disabled="savingActaBaja" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition disabled:opacity-50 flex items-center gap-2">
+                        <span x-show="!savingActaBaja">Guardar acta</span>
+                        <span x-show="savingActaBaja">Guardando…</span>
+                    </button>
+                    <button type="button" @click="modalActaBaja = false" class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors" title="Cerrar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-[2fr,1fr] gap-4 p-4 flex-1 min-h-0 overflow-hidden">
-                <div class="border border-slate-700/60 rounded-lg bg-white min-h-[400px] overflow-hidden">
+            <div class="flex-1 min-h-0 flex flex-col overflow-hidden px-3 py-2">
+                <div class="rounded-lg bg-white flex-1 min-h-0 overflow-hidden flex flex-col border border-slate-600/50 shadow-inner">
                     <template x-if="modalActaBaja && inspeccionEquipoId">
                         <iframe
                             x-ref="iframeActaBaja"
-                            :src="'{{ route('equipos-baja.formato-html', ['equipo' => 'ID']) }}'.replace('ID', inspeccionEquipoId)"
-                            class="w-full h-[70vh] lg:h-full rounded-lg border-0"
+                            :src="'{{ route('equipos-baja.formato-html-por-equipo', ['equipo' => 'ID']) }}'.replace('ID', inspeccionEquipoId)"
+                            class="w-full flex-1 rounded-lg border-0 min-h-[65vh]"
                             title="Formato ACTA DE BAJA editable">
                         </iframe>
                     </template>
-                </div>
-                <div class="flex flex-col gap-3 border border-slate-700/60 rounded-lg bg-slate-900/70 p-4">
-                    <h4 class="text-sm font-semibold text-slate-200 mb-1">Datos del acta</h4>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Fecha de baja <span class="text-red-400">*</span></label>
-                        <input type="date" x-model="formActaBaja.fecha_baja" required class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm focus:ring-2 focus:ring-emerald-500/30">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Resumen del motivo de baja <span class="text-red-400">*</span></label>
-                        <textarea x-model="formActaBaja.resumen_baja" required rows="3" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm focus:ring-2 focus:ring-emerald-500/30" placeholder="Describe brevemente el motivo por el cual se da de baja el equipo..."></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Responsable de inventario - Nombre</label>
-                        <input type="text" x-model="formActaBaja.responsable_inventario_nombre" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm focus:ring-2 focus:ring-emerald-500/30">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Responsable de inventario - C.C.</label>
-                        <input type="text" x-model="formActaBaja.responsable_inventario_cc" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm focus:ring-2 focus:ring-emerald-500/30">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Gerente administrativa - Nombre</label>
-                        <input type="text" x-model="formActaBaja.gerente_administrativa_nombre" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm focus:ring-2 focus:ring-emerald-500/30">
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1">Gerente administrativa - C.C.</label>
-                        <input type="text" x-model="formActaBaja.gerente_administrativa_cc" class="w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-100 text-sm focus:ring-2 focus:ring-emerald-500/30">
-                    </div>
-                    <div class="pt-2 flex gap-3 justify-end">
-                        <button type="button" @click="modalActaBaja = false" class="px-4 py-2.5 rounded-xl border border-slate-600 text-slate-300 text-xs font-medium hover:bg-slate-800 transition">Cancelar</button>
-                        <button type="button" @click="guardarActaBaja()" :disabled="savingActaBaja" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition disabled:opacity-50 flex items-center gap-2">
-                            <span x-show="!savingActaBaja">Guardar acta</span>
-                            <span x-show="savingActaBaja">Guardando…</span>
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -406,12 +405,14 @@
                 <tbody class="divide-y divide-slate-800/60" x-ref="tablaInspecciones">
                     @forelse($inspecciones as $insp)
                         @php
+                            $validezStr = optional($insp->validez_inspeccion)->format('Y-m-d');
+                            $puedeRehacer = !$validezStr || (now()->format('Y-m-d') >= $validezStr);
                             $inspData = [
                                 'id' => $insp->id,
                                 'equipo_id' => $insp->equipo_id,
                                 'tipo_equipo_id' => $insp->tipo_equipo_id,
                                 'fecha_inspeccion' => optional($insp->fecha_inspeccion)->format('Y-m-d'),
-                                'validez_inspeccion' => optional($insp->validez_inspeccion)->format('Y-m-d'),
+                                'validez_inspeccion' => $validezStr,
                                 'equipo_codigo' => $insp->equipo->codigo ?? '',
                                 'tipo_equipo' => $insp->tipoEquipo->nombre ?? '',
                             ];
@@ -422,21 +423,32 @@
                             <td class="py-2 px-3">{{ $insp->tipoEquipo->nombre ?? '' }}</td>
                             <td class="py-2 px-3">{{ optional($insp->validez_inspeccion)->format('Y-m-d') }}</td>
                             <td class="py-2 px-3 text-right">
-                                <div class="inline-flex gap-1">
+                                <div class="inline-flex flex-wrap items-center gap-1 justify-end">
                                     <button
                                         type="button"
-                                        @click='modalVerTodasInspecciones = true'
+                                        @click='verInspeccion(@json($inspData))'
                                         class="px-2.5 py-1 rounded-lg border border-slate-600 text-slate-200 text-[11px] hover:bg-slate-800 transition"
                                     >
                                         Ver
                                     </button>
-                                    <button
-                                        type="button"
-                                        @click='rehacerInspeccion(@json($inspData))'
-                                        class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] hover:bg-emerald-500 transition"
-                                    >
-                                        Rehacer inspección
-                                    </button>
+                                    @if($puedeRehacer)
+                                        <button
+                                            type="button"
+                                            @click='rehacerInspeccion(@json($inspData))'
+                                            class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] hover:bg-emerald-500 transition"
+                                        >
+                                            Rehacer inspección
+                                        </button>
+                                    @else
+                                        <span class="text-[11px] text-slate-400" title="Puede rehacer la inspección a partir de esta fecha">Espere hasta {{ $validezStr }}</span>
+                                        <button
+                                            type="button"
+                                            disabled
+                                            class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-500 text-[11px] cursor-not-allowed"
+                                        >
+                                            Rehacer inspección
+                                        </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -475,6 +487,7 @@ function inspeccionarApp() {
         inspeccionEquipoId: null,
         inspeccionEquipoCodigo: '',
         inspeccionEditId: null,
+        inspeccionContenidoHtml: null, // contenido cargado del servidor al "Ver"
         modoInspeccion: 'nuevo', // nuevo | ver | editar
         formInspeccion: {
             fecha_inspeccion: new Date().toISOString().slice(0,10),
@@ -526,6 +539,26 @@ function inspeccionarApp() {
             }
         },
 
+        puedeVolverAInspeccionar(eq) {
+            if (!eq || (eq.inspecciones_count || 0) === 0) return false;
+            const validez = eq.ultima_validez_inspeccion;
+            if (!validez) return true;
+            const hoy = this.hoy || new Date().toISOString().slice(0,10);
+            return hoy >= validez;
+        },
+        abrirDarDeBaja(eq) {
+            if (!eq || !eq.id) return;
+            this.inspeccionEquipoId = eq.id;
+            this.inspeccionEquipoCodigo = eq.codigo || '';
+            this.formActaBaja.fecha_baja = new Date().toISOString().slice(0,10);
+            this.formActaBaja.resumen_baja = '';
+            this.formActaBaja.responsable_inventario_nombre = '';
+            this.formActaBaja.responsable_inventario_cc = '';
+            this.formActaBaja.gerente_administrativa_nombre = '';
+            this.formActaBaja.gerente_administrativa_cc = '';
+            this.modalSeleccionEquipo = false;
+            this.modalActaBaja = true;
+        },
         abrirInspeccion(eq) {
             this.inspeccionTipoId = this.tipoSeleccionId;
             this.inspeccionTipoNombre = this.tipoSeleccionNombre;
@@ -534,7 +567,8 @@ function inspeccionarApp() {
             this.inspeccionEditId = null;
             this.modoInspeccion = 'nuevo';
             this.formInspeccion.fecha_inspeccion = new Date().toISOString().slice(0,10);
-            this.formInspeccion.validez_inspeccion = '';
+            // Por defecto, la validez inicia igual a la fecha de inspección (el usuario puede ajustarla)
+            this.formInspeccion.validez_inspeccion = this.formInspeccion.fecha_inspeccion;
             this.modalInspeccion = true;
         },
 
@@ -553,15 +587,16 @@ function inspeccionarApp() {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     
                     if (this.modoInspeccion === 'ver') {
-                        let savedContent = null;
+                        // Prioridad 1: contenido cargado del servidor (lo que se guardó al guardar la inspección)
+                        let savedContent = this.inspeccionContenidoHtml && this.inspeccionContenidoHtml.trim() ? this.inspeccionContenidoHtml : null;
                         
-                        // Buscar primero con el ID de la inspección si existe
-                        if (this.inspeccionEditId) {
+                        // Prioridad 2: localStorage con ID de la inspección
+                        if (!savedContent && this.inspeccionEditId) {
                             const key = `inspeccion_html_${this.inspeccionEquipoId}_${this.inspeccionTipoId}_${this.inspeccionEditId}`;
                             savedContent = localStorage.getItem(key);
                         }
                         
-                        // Si no se encuentra, buscar con 'nuevo' como fallback
+                        // Prioridad 3: localStorage con 'nuevo'
                         if (!savedContent) {
                             const keyNuevo = `inspeccion_html_${this.inspeccionEquipoId}_${this.inspeccionTipoId}_nuevo`;
                             savedContent = localStorage.getItem(keyNuevo);
@@ -577,6 +612,26 @@ function inspeccionarApp() {
                             editables.forEach(el => {
                                 el.setAttribute('contenteditable', 'false');
                             });
+                        }
+                        // Limpiar para no reutilizar en otra apertura
+                        this.inspeccionContenidoHtml = null;
+                    } else if (this.modoInspeccion === 'nuevo') {
+                        // Para nuevas inspecciones, rellenar automáticamente las celdas de fecha/validez en el formato
+                        const filas = iframeDoc.querySelectorAll('table tr');
+                        if (filas.length >= 2) {
+                            const celdasFecha = filas[1].querySelectorAll('td.editable');
+                            if (celdasFecha.length >= 2) {
+                                const fecha = this.formInspeccion.fecha_inspeccion || new Date().toISOString().slice(0,10);
+                                const validez = this.formInspeccion.validez_inspeccion || fecha;
+                                const formatear = (valor) => {
+                                    if (!valor || valor.length !== 10) return '';
+                                    const partes = valor.split('-');
+                                    if (partes.length !== 3) return valor;
+                                    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+                                };
+                                celdasFecha[0].textContent = formatear(fecha);
+                                celdasFecha[1].textContent = formatear(validez);
+                            }
                         }
                     }
                 } catch (e) {
@@ -605,7 +660,17 @@ function inspeccionarApp() {
             }
         },
 
-        verInspeccion(data) {
+        getContenidoInspeccionHtml() {
+            if (!this.$refs.iframeInspeccion) return null;
+            try {
+                const iframeDoc = this.$refs.iframeInspeccion.contentDocument || this.$refs.iframeInspeccion.contentWindow.document;
+                return iframeDoc.documentElement ? iframeDoc.documentElement.outerHTML : null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        async verInspeccion(data) {
             this.inspeccionTipoId = data.tipo_equipo_id;
             this.inspeccionTipoNombre = data.tipo_equipo || '';
             this.inspeccionEquipoId = data.equipo_id;
@@ -614,6 +679,20 @@ function inspeccionarApp() {
             this.formInspeccion.fecha_inspeccion = data.fecha_inspeccion || new Date().toISOString().slice(0,10);
             this.formInspeccion.validez_inspeccion = data.validez_inspeccion || '';
             this.modoInspeccion = 'ver';
+            this.inspeccionContenidoHtml = null;
+            if (this.inspeccionEditId) {
+                try {
+                    const res = await fetch(`{{ route('inspeccionar.contenido', ['inspeccion' => 'ID']) }}`.replace('ID', this.inspeccionEditId), {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    const json = await res.json();
+                    if (json.success && json.contenido_html && json.contenido_html.trim()) {
+                        this.inspeccionContenidoHtml = json.contenido_html;
+                    }
+                } catch (e) {
+                    console.error('Error al cargar contenido de inspección:', e);
+                }
+            }
             this.modalInspeccion = true;
         },
 
@@ -705,6 +784,12 @@ function inspeccionarApp() {
             this.modalEquipoBaja = false;
             this.equipoEsBaja = esBaja;
             
+            // Validar que la validez de la inspección esté diligenciada cuando aplique
+            if (!this.equipoEsBaja && (!this.formInspeccion.validez_inspeccion || !this.formInspeccion.validez_inspeccion.length)) {
+                alert('La fecha de \"Validez de la inspección\" es obligatoria.');
+                return;
+            }
+
             this.guardarContenidoInspeccionHtml();
             this.savingInspeccion = true;
             try {
@@ -722,6 +807,7 @@ function inspeccionarApp() {
                         tipo_equipo_id: this.inspeccionTipoId,
                         fecha_inspeccion: this.formInspeccion.fecha_inspeccion,
                         validez_inspeccion: this.formInspeccion.validez_inspeccion,
+                        contenido_html: this.getContenidoInspeccionHtml(),
                     }),
                 });
                 const data = await res.json();
@@ -749,15 +835,63 @@ function inspeccionarApp() {
             }
         },
 
+        leerDatosActaDesdeIframe() {
+            if (!this.$refs.iframeActaBaja) return null;
+            try {
+                const doc = this.$refs.iframeActaBaja.contentDocument || this.$refs.iframeActaBaja.contentWindow.document;
+                const actDetails = doc.querySelector('.act-details');
+                if (!actDetails) return null;
+                const editablesFecha = actDetails.querySelectorAll('.editable');
+                let fechaBaja = '';
+                if (editablesFecha.length >= 1) {
+                    const textoFecha = (editablesFecha[0].textContent || '').trim();
+                    const partes = textoFecha.split('/').map(p => p.trim());
+                    if (partes.length === 3) fechaBaja = partes[2] + '-' + partes[1].padStart(2,'0') + '-' + partes[0].padStart(2,'0');
+                }
+                let resumenBaja = '';
+                const tablas = doc.querySelectorAll('table');
+                if (tablas.length >= 2 && tablas[1].rows[1] && tablas[1].rows[1].cells[5]) {
+                    resumenBaja = (tablas[1].rows[1].cells[5].textContent || '').trim();
+                }
+                const signatureBoxes = doc.querySelectorAll('.signature-box');
+                let respNombre = '', respCc = '', gerenteNombre = '', gerenteCc = '';
+                if (signatureBoxes[0]) {
+                    const inputs = signatureBoxes[0].querySelectorAll('input');
+                    if (inputs[0]) respNombre = (inputs[0].value || '').trim();
+                    if (inputs[1]) respCc = (inputs[1].value || '').trim();
+                }
+                if (signatureBoxes[1]) {
+                    const inputs = signatureBoxes[1].querySelectorAll('input');
+                    if (inputs[0]) gerenteNombre = (inputs[0].value || '').trim();
+                    if (inputs[1]) gerenteCc = (inputs[1].value || '').trim();
+                }
+                return { fecha_baja: fechaBaja, resumen_baja: resumenBaja, responsable_inventario_nombre: respNombre, responsable_inventario_cc: respCc, gerente_administrativa_nombre: gerenteNombre, gerente_administrativa_cc: gerenteCc };
+            } catch (e) {
+                console.error('Error leyendo datos del acta:', e);
+                return null;
+            }
+        },
+
         async guardarActaBaja() {
-            if (!this.inspeccionEquipoId || !this.formActaBaja.fecha_baja || !this.formActaBaja.resumen_baja) {
-                alert('Completa la fecha de baja y el resumen del motivo.');
+            if (!this.inspeccionEquipoId) {
+                alert('No hay equipo seleccionado.');
+                return;
+            }
+            const datos = this.leerDatosActaDesdeIframe();
+            if (!datos) {
+                alert('No se pudo leer el formulario del acta. Intenta de nuevo.');
+                return;
+            }
+            if (!datos.fecha_baja) {
+                datos.fecha_baja = this.hoy || new Date().toISOString().slice(0,10);
+            }
+            if (!datos.resumen_baja) {
+                alert('Completa en la vista el campo Calificación o Estado (motivo de baja).');
                 return;
             }
 
             this.savingActaBaja = true;
             try {
-                // Obtener el HTML del iframe del acta
                 let actaHtml = '';
                 if (this.$refs.iframeActaBaja) {
                     try {
@@ -770,6 +904,7 @@ function inspeccionarApp() {
 
                 const res = await fetch('{{ route('equipos-baja.store') }}', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
@@ -778,18 +913,36 @@ function inspeccionarApp() {
                     },
                     body: JSON.stringify({
                         equipo_id: this.inspeccionEquipoId,
-                        fecha_baja: this.formActaBaja.fecha_baja,
-                        resumen_baja: this.formActaBaja.resumen_baja,
-                        responsable_inventario_nombre: this.formActaBaja.responsable_inventario_nombre,
-                        responsable_inventario_cc: this.formActaBaja.responsable_inventario_cc,
-                        gerente_administrativa_nombre: this.formActaBaja.gerente_administrativa_nombre,
-                        gerente_administrativa_cc: this.formActaBaja.gerente_administrativa_cc,
-                        asistentes: this.formActaBaja.asistentes,
-                        items_baja: this.formActaBaja.items_baja,
+                        fecha_baja: datos.fecha_baja,
+                        resumen_baja: datos.resumen_baja,
+                        responsable_inventario_nombre: datos.responsable_inventario_nombre,
+                        responsable_inventario_cc: datos.responsable_inventario_cc,
+                        gerente_administrativa_nombre: datos.gerente_administrativa_nombre,
+                        gerente_administrativa_cc: datos.gerente_administrativa_cc,
+                        asistentes: [],
+                        items_baja: [],
                         acta_html: actaHtml,
                     }),
                 });
-                const data = await res.json();
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    console.error('Error en respuesta al dar de baja:', res.status, text);
+                    alert('Error al dar de baja: ' + res.status + '\n\n' + (text.length > 800 ? text.slice(0,800) + '...' : text));
+                    return;
+                }
+
+                const contentType = res.headers.get('content-type') || '';
+                let data;
+                if (contentType.includes('application/json')) {
+                    data = await res.json();
+                } else {
+                    const text = await res.text();
+                    console.error('Respuesta no JSON al dar de baja:', text);
+                    alert('Error al dar de baja: respuesta no JSON recibida (ver consola).');
+                    return;
+                }
+
                 if (!data.success) {
                     alert(data.message || 'No se pudo guardar el acta de baja.');
                     return;

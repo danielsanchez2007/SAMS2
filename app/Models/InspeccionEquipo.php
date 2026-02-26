@@ -14,6 +14,7 @@ class InspeccionEquipo extends Model
         'tipo_equipo_id',
         'fecha_inspeccion',
         'validez_inspeccion',
+        'contenido_html',
     ];
 
     protected $casts = [
