@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Cache;
+use App\Helpers\PermisoHelper;
 
 class ConfiguracionController extends Controller
 {
@@ -76,6 +77,37 @@ class ConfiguracionController extends Controller
             }
         }
         
+        // Variables para redes sociales
+        $nombreUsuario = $user['name'] ?? 'Usuario';
+        $imagenUsuario = null;
+        $telefonoUsuario = null;
+        $userIdActual = $user['id'] ?? '';
+        
+        // Obtener imagen y teléfono del usuario actual
+        if (($user['id'] ?? null) !== 'mega_admin' && isset($user['id'])) {
+            $usuarioDB = \App\Models\Usuario::find($user['id']);
+            if ($usuarioDB) {
+                $telefonoUsuario = $usuarioDB->telefono;
+                if ($usuarioDB->imagen_usuario) {
+                    $imagenPath = trim($usuarioDB->imagen_usuario);
+                    if (str_starts_with($imagenPath, 'http://') || str_starts_with($imagenPath, 'https://')) {
+                        $imagenUsuario = $imagenPath;
+                    } elseif (str_starts_with($imagenPath, 'storage/')) {
+                        $imagenUsuario = asset('storage/' . str_replace('storage/', '', $imagenPath));
+                    } elseif (str_starts_with($imagenPath, 'public/img/')) {
+                        $imagenUsuario = asset(str_replace('public/', '', $imagenPath));
+                    } elseif (str_starts_with($imagenPath, 'img/')) {
+                        $imagenUsuario = asset($imagenPath);
+                    } else {
+                        $imagenUsuario = asset($imagenPath);
+                    }
+                }
+            }
+        }
+        
+        // Verificar si puede agregar "Yo"
+        $puedeAgregarYo = PermisoHelper::puede('redes_sociales', 'acceso') || PermisoHelper::puede('redes_sociales', 'agregar') || PermisoHelper::puede('redes_sociales', 'editar') || $esAdmin;
+        
         if ($esAdmin) {
             $usuarios = \App\Models\Usuario::where('activo', true)
                 ->orderBy('nombre')
@@ -117,7 +149,8 @@ class ConfiguracionController extends Controller
         }
 
         return view('configuracion.index', compact(
-            'tab', 'redesSociales', 'configLogin', 'piePagina', 'encabezado', 'otrosTextos', 'usuarios'
+            'tab', 'redesSociales', 'configLogin', 'piePagina', 'encabezado', 'otrosTextos', 'usuarios',
+            'nombreUsuario', 'imagenUsuario', 'telefonoUsuario', 'userIdActual', 'esAdmin', 'puedeAgregarYo'
         ));
     }
 
