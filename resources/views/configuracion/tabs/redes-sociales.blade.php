@@ -1,14 +1,3 @@
-{{-- Redes Sociales --}}
-@php
-// Variables basicas para evitar errores
-$nombreUsuario = $nombreUsuario ?? 'Usuario';
-$esAdmin = $esAdmin ?? false;
-$puedeAgregarYo = $puedeAgregarYo ?? false;
-$imagenUsuario = $imagenUsuario ?? '';
-$telefonoUsuario = $telefonoUsuario ?? '';
-$userIdActual = $userIdActual ?? '';
-@endphp
-
 <div x-show="tab === 'redes-sociales'" x-cloak class="space-y-6" x-data="redesSocialesManager({{ json_encode($redesSociales) }}, '{{ $nombreUsuario }}', '{{ $esAdmin ? 'true' : 'false' }}', '{{ $puedeAgregarYo ? 'true' : 'false' }}', '{{ $imagenUsuario }}', '{{ $telefonoUsuario }}', '{{ json_encode($usuarios ?? []) }}', '{{ $userIdActual }}')">
     <form action="{{ route('configuracion.store') }}" method="POST" class="space-y-6" enctype="multipart/form-data">
         @csrf
