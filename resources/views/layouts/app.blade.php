@@ -29,10 +29,13 @@
     $redesSociales = \Illuminate\Support\Facades\Cache::get('sistema_redes_sociales', []);
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth" translate="no">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="google" content="notranslate">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Panel') — {{ config('app.name') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -1410,7 +1413,7 @@
                         }
 
                         if (isInvalidApiKeyError(raw)) {
-                            return 'La API Key de Gemini no es válida o no tiene permisos. Usa Modo SAMS o configura GEMINI_API_KEY.';
+                            return 'La API Key de Gemini no es válida o no tiene permisos. Verifica GEMINI_API_KEY para usar Gemini en Modo Full.';
                         }
 
                         return raw;
@@ -1420,87 +1423,36 @@
                     let response = await sendChatRequest(activeMode);
                     let data = await parseChatResponse(response);
 
-                    const retryUsingSamsMode = async () => {
-                        if (activeMode !== 'sams') {
-                            this.mode = 'sams';
-                            this.messages.push({
-                                role: 'assistant',
-                                text: '⚠️ Modo Full no disponible por API Key inválida. Cambié automáticamente a Modo SAMS para mantener el asistente funcionando.'
-                            });
-                            activeMode = 'sams';
-                        }
-
-                        response = await sendChatRequest('sams');
-                        data = await parseChatResponse(response);
-
-                        if (!response.ok) {
-                            const retryError = normalizeGeminiError(getHttpErrorMessage(response, data));
-                            this.messages.push({
-                                role: 'assistant',
-                                text: '❌ ' + retryError
-                            });
-                            console.error('Error HTTP de Gemini (retry SAMS):', { status: response.status, data });
-                            return false;
-                        }
-
-                        if (!data?.success) {
-                            const retryError = normalizeGeminiError(data?.error || 'Error desconocido. Por favor, verifica la configuración de Gemini.');
-                            this.messages.push({
-                                role: 'assistant',
-                                text: '❌ ' + retryError
-                            });
-                            console.error('Error lógico de Gemini (retry SAMS):', data);
-                            return false;
-                        }
-
-                        return true;
-                    };
-
                     if (!response.ok) {
                         const errorMsg = normalizeGeminiError(getHttpErrorMessage(response, data));
-                        const invalidApiKeyInFullMode = activeMode === 'full' && isInvalidApiKeyError(errorMsg);
+                        this.messages.push({
+                            role: 'assistant',
+                            text: '❌ ' + errorMsg
+                        });
+                        console.error('Error HTTP de Gemini:', { status: response.status, data });
+                        return;
+                    }
 
-                        if (invalidApiKeyInFullMode) {
-                            const fallbackOk = await retryUsingSamsMode();
-                            if (!fallbackOk) return;
-                        } else {
-                            this.messages.push({
-                                role: 'assistant',
-                                text: '❌ ' + errorMsg
-                            });
-                            console.error('Error HTTP de Gemini:', { status: response.status, data });
-                            return;
-                        }
-                    } else if (!data?.success) {
+                    if (!data?.success) {
                         const errorMsg = normalizeGeminiError(data?.error || 'Error desconocido. Por favor, verifica la configuración de Gemini.');
-                        const invalidApiKeyInFullMode = activeMode === 'full' && isInvalidApiKeyError(errorMsg);
-
-                        if (invalidApiKeyInFullMode) {
-                            const fallbackOk = await retryUsingSamsMode();
-                            if (!fallbackOk) return;
-                        } else {
-                            this.messages.push({
-                                role: 'assistant',
-                                text: '❌ ' + errorMsg
-                            });
-                            console.error('Error de Gemini:', data);
-                            return;
-                        }
+                        this.messages.push({
+                            role: 'assistant',
+                            text: '❌ ' + errorMsg
+                        });
+                        console.error('Error de Gemini:', data);
+                        return;
                     }
 
                     if (data?.success) {
-                        if (activeMode === 'full' && isInvalidApiKeyError(data?.message || '')) {
-                            const fallbackOk = await retryUsingSamsMode();
-                            if (!fallbackOk) return;
-                        }
-
                         if (data?.effective_mode === 'sams' || data?.effective_mode === 'full') {
                             this.mode = data.effective_mode;
                             activeMode = data.effective_mode;
                         }
 
                         const assistantText = isInvalidApiKeyError(data?.message || '')
-                            ? 'La API Key de Gemini no es válida o no tiene permisos. Se activó Modo SAMS automáticamente.'
+                            ? (activeMode === 'full'
+                                ? 'Modo Full activo con respaldo. No fue posible usar la API principal de Gemini en este momento.'
+                                : 'La API Key de Gemini no es válida o no tiene permisos.')
                             : (data?.message || 'Sin respuesta del asistente.');
 
                         this.messages.push({

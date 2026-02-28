@@ -234,37 +234,16 @@ class GeminiController extends Controller
                 $result['error'] = $result['error'] ?? 'Error desconocido en el servicio.';
             }
 
-            // Fallback defensivo: si en modo Full aparece error de API key, forzar SAMS.
+            // Sanitizar errores de API key sin forzar cambio de modo.
             $invalidKeyDetected = $this->hasInvalidApiKeyError($result['error'] ?? null)
                 || $this->hasInvalidApiKeyError($result['message'] ?? null);
 
-            if ($requestedMode === 'full' && $invalidKeyDetected) {
-                $fallback = $this->geminiService->chatWithContext($message, $history, 'sams');
-
-                if (!isset($fallback['success'])) {
-                    $fallback['success'] = false;
-                }
-
-                if (!($fallback['success'] ?? false)) {
-                    $fallback['success'] = true;
-                    $fallback['error'] = null;
-                    $fallback['message'] = 'Modo Full no disponible por API Key inválida. Se activó Modo SAMS automáticamente.';
-                } elseif (($fallback['message'] ?? null) === null) {
-                    $fallback['message'] = 'Modo Full no disponible por API Key inválida. Se activó Modo SAMS automáticamente.';
-                }
-
-                $fallback['effective_mode'] = 'sams';
-                $result = $fallback;
-            }
-
-            // Nunca mostrar texto crudo en inglés de API key inválida.
-            if ($this->hasInvalidApiKeyError($result['error'] ?? null)) {
-                $result['error'] = 'La API Key de Gemini no es válida o no tiene permisos. Se activó Modo SAMS automáticamente.';
-            }
-            if ($this->hasInvalidApiKeyError($result['message'] ?? null)) {
-                $result['message'] = 'La API Key de Gemini no es válida o no tiene permisos. Se activó Modo SAMS automáticamente.';
-                if ($requestedMode === 'full') {
-                    $result['effective_mode'] = 'sams';
+            if ($invalidKeyDetected) {
+                if (($result['success'] ?? false) && $requestedMode === 'full') {
+                    $result['message'] = 'Modo Full activo con respaldo. No fue posible usar la API principal de Gemini en este momento.';
+                    $result['effective_mode'] = 'full';
+                } else {
+                    $result['error'] = 'La API Key de Gemini no es válida o no tiene permisos. Verifica GEMINI_API_KEY para usar Gemini en Modo Full.';
                 }
             }
 

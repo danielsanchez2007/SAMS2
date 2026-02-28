@@ -202,8 +202,8 @@
                                            download
                                            class="text-indigo-400 hover:text-indigo-300"
                                            title="Descargar">⬇ Descargar</a>
-                                        @if(!$esImagenEquipo)
-                                            <form method="POST" action="{{ route('almacen.destroy.imagen', $img) }}" 
+                                        @if(!$esImagenEquipo && isset($img->id) && is_numeric($img->id))
+                                            <form method="POST" action="{{ route('almacen.destroy.imagen', $img->id) }}" 
                                                   class="inline" 
                                                   onsubmit="return confirm('¿Eliminar esta imagen?');">
                                                 @csrf
@@ -213,7 +213,7 @@
                                                         title="Eliminar">🗑 Eliminar</button>
                                             </form>
                                         @else
-                                            <span class="text-slate-500 text-xs">Editar desde Equipos</span>
+                                            <span class="text-slate-500 text-xs">No se puede eliminar</span>
                                         @endif
                                     </div>
                                 </td>

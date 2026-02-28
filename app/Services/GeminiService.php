@@ -59,11 +59,26 @@ class GeminiService
      */
     public function __construct()
     {
-        $this->apiUrl = config('services.gemini.api_url');
-        $this->apiKey = config('services.gemini.api_key');
-        $this->model = config('services.gemini.model');
+        $this->apiUrl = rtrim(trim((string) config('services.gemini.api_url', '')), '/');
+        $this->apiKey = $this->normalizeApiKey((string) config('services.gemini.api_key', ''));
+        $this->model = trim((string) config('services.gemini.model', ''));
         $this->timeout = config('services.gemini.timeout', 30);
         $this->enabled = config('services.gemini.enabled', true);
+    }
+
+    /**
+     * Limpia formato de API key para evitar errores comunes de configuración.
+     */
+    private function normalizeApiKey(string $rawKey): string
+    {
+        $key = trim($rawKey);
+        $key = trim($key, "\"'`");
+
+        if (str_starts_with(mb_strtolower($key, 'UTF-8'), 'bearer ')) {
+            $key = trim(substr($key, 7));
+        }
+
+        return $key;
     }
 
     /**
@@ -481,6 +496,119 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
             : "Estoy disponible en modo SAMS con datos reales del sistema.";
 
         return "{$intro}\n\nPrueba con:\n• ¿Cuántos usuarios/equipos/proveedores hay?\n• ¿Qué acceso tiene el rol Administrador?\n• Buscar usuario con cédula 123456789\n• Revisar usuarios con nombres duplicados o parecidos";
+    }
+
+    /**
+     * Extrae el primer texto útil desde los RelatedTopics de DuckDuckGo.
+     */
+    private function extractFirstRelatedTopicText(array $topics): string
+    {
+        foreach ($topics as $topic) {
+            if (!is_array($topic)) {
+                continue;
+            }
+
+            $text = trim((string) ($topic['Text'] ?? ''));
+            if ($text !== '') {
+                return $text;
+            }
+
+            $nested = $topic['Topics'] ?? null;
+            if (is_array($nested)) {
+                $nestedText = $this->extractFirstRelatedTopicText($nested);
+                if ($nestedText !== '') {
+                    return $nestedText;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Intenta responder preguntas generales sin Gemini, usando DuckDuckGo.
+     */
+    private function answerGeneralKnowledgeFallback(string $userMessage): ?string
+    {
+        $query = trim($userMessage);
+        if ($query === '') {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(min($this->timeout, 10))
+                ->get('https://api.duckduckgo.com/', [
+                    'q' => $query,
+                    'format' => 'json',
+                    'no_html' => 1,
+                    'skip_disambig' => 1,
+                    'kl' => 'es-es',
+                ]);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $data = $response->json();
+            if (!is_array($data)) {
+                return null;
+            }
+
+            $answer = trim((string) ($data['Answer'] ?? ''));
+            if ($answer === '') {
+                $answer = trim((string) ($data['AbstractText'] ?? ''));
+            }
+            if ($answer === '') {
+                $answer = $this->extractFirstRelatedTopicText($data['RelatedTopics'] ?? []);
+            }
+
+            if ($answer === '') {
+                return null;
+            }
+
+            return "Modo Full (respaldo web): {$answer}";
+        } catch (\Exception $e) {
+            Log::warning('Gemini: Error en fallback general de Full', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Respuesta de respaldo para mantener modo Full funcional sin Gemini.
+     */
+    private function buildFullModeFallbackResponse(string $fallbackReason, string $userMessage): array
+    {
+        $message = $this->answerGeneralKnowledgeFallback($userMessage);
+
+        if ($message === null) {
+            $message = "Modo Full activo con respaldo básico.\n"
+                . "No pude usar Gemini ahora mismo, pero puedo darte orientación general.\n"
+                . "Intenta una pregunta concreta (por ejemplo: \"¿Qué es la computación cuántica?\").";
+        }
+
+        return [
+            'success' => true,
+            'error' => null,
+            'message' => $message,
+            'effective_mode' => 'full',
+            'fallback_reason' => $fallbackReason,
+        ];
+    }
+
+    /**
+     * Resuelve fallback según el modo solicitado.
+     */
+    private function buildModeFallbackResponse(
+        string $mode,
+        string $fallbackReason,
+        string $userMessage,
+        array $conversationHistory = []
+    ): array {
+        if ($mode === 'full') {
+            return $this->buildFullModeFallbackResponse($fallbackReason, $userMessage);
+        }
+
+        return $this->buildSamsModeFallbackResponse($mode, $fallbackReason, $userMessage, $conversationHistory);
     }
 
     /**
@@ -1043,7 +1171,7 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
         }
 
         if (!$this->isConfigured()) {
-            return $this->buildSamsModeFallbackResponse(
+            return $this->buildModeFallbackResponse(
                 $mode,
                 'gemini_not_configured',
                 $userMessage,
@@ -1171,7 +1299,7 @@ INSTRUCCIONES:
                         'error' => $jsonError->getMessage(),
                         'body' => substr($response->body(), 0, 500)
                     ]);
-                    return $this->buildSamsModeFallbackResponse(
+                    return $this->buildModeFallbackResponse(
                         $mode,
                         'invalid_json_response',
                         $userMessage,
@@ -1182,7 +1310,7 @@ INSTRUCCIONES:
                 // Verificar si hay candidatos
                 if (!isset($data['candidates']) || empty($data['candidates'])) {
                     Log::warning('Gemini: Respuesta sin candidatos', ['data' => $data]);
-                    return $this->buildSamsModeFallbackResponse(
+                    return $this->buildModeFallbackResponse(
                         $mode,
                         'empty_candidates',
                         $userMessage,
@@ -1197,7 +1325,7 @@ INSTRUCCIONES:
                         Log::warning('Gemini: Texto de respuesta contiene error de API key inválida', [
                             'text' => $text,
                         ]);
-                        return $this->buildSamsModeFallbackResponse(
+                        return $this->buildModeFallbackResponse(
                             $mode,
                             'invalid_api_key_text',
                             $userMessage,
@@ -1226,7 +1354,7 @@ INSTRUCCIONES:
                         }
                     }
                     if ($blocked) {
-                        return $this->buildSamsModeFallbackResponse(
+                        return $this->buildModeFallbackResponse(
                             $mode,
                             'safety_blocked',
                             $userMessage,
@@ -1235,7 +1363,7 @@ INSTRUCCIONES:
                     }
                 }
 
-                return $this->buildSamsModeFallbackResponse(
+                return $this->buildModeFallbackResponse(
                     $mode,
                     'empty_text_response',
                     $userMessage,
@@ -1260,7 +1388,6 @@ INSTRUCCIONES:
             $errorMessage = null;
             
             $apiErrorRaw = (string) ($errorData['error']['message'] ?? '');
-            $apiErrorLower = mb_strtolower($apiErrorRaw, 'UTF-8');
             $isInvalidApiKeyError = $this->isInvalidApiKeyErrorMessage($apiErrorRaw);
 
             if ($statusCode === 401 || $statusCode === 403 || $isInvalidApiKeyError) {
@@ -1286,7 +1413,7 @@ INSTRUCCIONES:
                 'body' => $response->body()
             ]);
 
-            return $this->buildSamsModeFallbackResponse(
+            return $this->buildModeFallbackResponse(
                 $mode,
                 $errorMessage ?: 'http_error',
                 $userMessage,
@@ -1298,7 +1425,7 @@ INSTRUCCIONES:
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return $this->buildSamsModeFallbackResponse(
+            return $this->buildModeFallbackResponse(
                 $mode,
                 'connection_error',
                 $userMessage,
@@ -1311,7 +1438,7 @@ INSTRUCCIONES:
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return $this->buildSamsModeFallbackResponse(
+            return $this->buildModeFallbackResponse(
                 $mode,
                 'unexpected_error',
                 $userMessage,
