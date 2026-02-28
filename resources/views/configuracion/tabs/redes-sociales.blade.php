@@ -169,7 +169,6 @@
         </div>
     </form>
 
-    <!-- Modal para gestionar números de WhatsApp -->
     <div x-show="modalWhatsApp.show" x-cloak 
         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         @click.self="modalWhatsApp.show = false">
@@ -185,7 +184,6 @@
                 </div>
             </div>
             <div class="p-6 space-y-4">
-                <!-- Campo "Yo" - Siempre visible si tiene permisos, pero solo si no tiene ya su número -->
                 <div x-show="puedeAgregarYo && !tieneMiNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
                     <button type="button" @click="agregarNumeroYo()" 
                         class="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold transition-all">
@@ -202,7 +200,6 @@
                     <p class="text-xs text-blue-600 mt-2">Agrega tu propio número de contacto. Se cargarán automáticamente tu nombre y foto. Deberás ingresar manualmente tu número de WhatsApp y una breve descripción.</p>
                 </div>
 
-                <!-- Número "Yo" (si existe) -->
                 <div x-show="tieneNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
@@ -256,7 +253,6 @@
                     </div>
                 </div>
 
-                <!-- Buscador -->
                 <div class="relative">
                     <input type="text" 
                         x-model="modalWhatsApp.busqueda"
@@ -267,7 +263,6 @@
                     </svg>
                 </div>
 
-                <!-- Lista de números -->
                 <div class="space-y-3 max-h-64 overflow-y-auto">
                     <template x-for="numero in numerosFiltrados" :key="numero.uid || ('num-' + numero.numero)">
                         <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all">
@@ -322,7 +317,6 @@
                     </template>
                 </div>
 
-                <!-- Selector de usuario para agregar número (solo admin) -->
                 <div x-show="esAdmin" class="space-y-2">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Seleccionar Usuario</label>
                     <select x-model="usuarioSeleccionado" @change="agregarNumeroDesdeUsuario()" 
