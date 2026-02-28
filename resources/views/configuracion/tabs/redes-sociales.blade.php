@@ -51,6 +51,7 @@
     use App\Helpers\PermisoHelper;
     $puedeAgregarYo = PermisoHelper::puede('redes_sociales', 'acceso') || PermisoHelper::puede('redes_sociales', 'agregar') || PermisoHelper::puede('redes_sociales', 'editar') || $esAdmin;
 @endphp
+
 <div x-show="tab === 'redes-sociales'" x-cloak class="space-y-6" x-data="redesSocialesManager({{ json_encode($redesSociales) }}, '{{ $nombreUsuario }}', {{ $esAdmin ? 'true' : 'false' }}, {{ $puedeAgregarYo ? 'true' : 'false' }}, '{{ $imagenUsuario }}', '{{ $telefonoUsuario }}', {{ json_encode($usuarios ?? []) }}, '{{ $user['id'] ?? '' }}')">
     <form action="{{ route('configuracion.store') }}" method="POST" class="space-y-6" enctype="multipart/form-data">
         @csrf
@@ -389,9 +390,7 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         userIdActual: userIdActual,
         nombreUsuarioActual: nombreUsuario,
         redes: redesIniciales.map(r => {
-            // Asegurar que la URL se cargue correctamente
             let url = r.url || '';
-            // Si no es WhatsApp pero tiene whatsapp://, limpiarlo
             if (r.icono_svg !== 'whatsapp' && url === 'whatsapp://') {
                 url = '';
             }
@@ -417,10 +416,10 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         telefonoUsuario: telefonoUsuario,
         usuarioSeleccionadoData: null,
         numeroYo: {
-            numero: '', // Vacío inicialmente, el usuario lo completará manualmente
-            nombre: nombreUsuario, // Pre-llenado automáticamente
-            descripcion: '', // Vacío inicialmente, el usuario lo completará manualmente
-            imagen: imagenUsuario || '', // Pre-llenado automáticamente
+            numero: '',
+            nombre: nombreUsuario,
+            descripcion: '',
+            imagen: imagenUsuario || '',
             es_yo: true
         },
         modalWhatsApp: {
@@ -436,17 +435,14 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         },
         
         get tieneMiNumeroYo() {
-            // Verificar si el usuario actual ya tiene su número "yo" agregado
             if (this.modalWhatsApp.index === null) return false;
             const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
-            // Verificar por nombre (más confiable que por ID ya que el nombre viene de la sesión)
             return numeros.some(n => n.es_yo === true && n.nombre && n.nombre.trim() === this.nombreUsuarioActual.trim());
         },
         
         get numerosFiltrados() {
             if (!this.modalWhatsApp.show || this.modalWhatsApp.index === null) return [];
             const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
-            // Filtrar el número "Yo" de la lista normal
             const numerosNormales = numeros.filter(n => !n.es_yo).map(n => ({
                 ...n,
                 uid: n.uid || (n.uid = this.makeUid()),
@@ -486,7 +482,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             if (!this.redes[index].numeros_whatsapp) {
                 this.redes[index].numeros_whatsapp = [];
             }
-            // Asegurar uid en todos los registros
             this.redes[index].numeros_whatsapp = (this.redes[index].numeros_whatsapp || []).map(n => ({
                 uid: n.uid || this.makeUid(),
                 numero: n.numero || '',
@@ -495,19 +490,17 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 imagen: n.imagen || '',
                 es_yo: !!n.es_yo,
             }));
-            // Cargar número "Yo" del usuario actual si existe (verificar por nombre)
             const numeroYoExistente = this.redes[index].numeros_whatsapp.find(n => 
                 n.es_yo === true && n.nombre && n.nombre.trim() === this.nombreUsuarioActual.trim()
             );
             if (numeroYoExistente) {
                 this.numeroYo = { ...numeroYoExistente };
             } else {
-                // Inicializar con nombre e imagen, pero número y descripción vacíos
                 this.numeroYo = {
-                    numero: '', // Vacío para que el usuario lo complete manualmente
-                    nombre: this.nombreUsuario, // Pre-llenado automáticamente
-                    descripcion: '', // Vacío para que el usuario lo complete manualmente
-                    imagen: this.imagenUsuario || '', // Pre-llenado automáticamente
+                    numero: '',
+                    nombre: this.nombreUsuario,
+                    descripcion: '',
+                    imagen: this.imagenUsuario || '',
                     es_yo: true
                 };
             }
@@ -519,7 +512,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 return;
             }
             
-            // Verificar si ya tiene su número "yo"
             if (this.tieneMiNumeroYo) {
                 alert('Ya tienes tu número de contacto agregado. Puedes editarlo en la sección "Mi Número" arriba.');
                 return;
@@ -529,21 +521,18 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 if (!this.redes[this.modalWhatsApp.index].numeros_whatsapp) {
                     this.redes[this.modalWhatsApp.index].numeros_whatsapp = [];
                 }
-                // Pre-llenar solo nombre e imagen, dejar número y descripción vacíos para que el usuario los complete
                 const nuevoNumeroYo = {
                     uid: this.makeUid(),
-                    numero: '', // Vacío para que el usuario lo complete manualmente
-                    nombre: this.nombreUsuario, // Pre-llenado automáticamente
-                    descripcion: '', // Vacío para que el usuario lo complete manualmente
-                    imagen: this.imagenUsuario || '', // Pre-llenado automáticamente
+                    numero: '',
+                    nombre: this.nombreUsuario,
+                    descripcion: '',
+                    imagen: this.imagenUsuario || '',
                     es_yo: true
                 };
-                // Crear nuevo array para forzar reactividad
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = [
                     ...this.redes[this.modalWhatsApp.index].numeros_whatsapp,
                     nuevoNumeroYo
                 ];
-                // Actualizar el objeto numeroYo para que se muestre en el formulario
                 this.numeroYo = { ...nuevoNumeroYo };
             }
         },
@@ -563,7 +552,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             const usuario = this.usuarios.find(u => u.id == this.usuarioSeleccionado);
             if (!usuario) return;
             
-            // Verificar si el usuario ya está agregado (por teléfono o nombre)
             const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
             const yaExiste = numeros.some(n => 
                 (n.numero && usuario.telefono && n.numero === usuario.telefono) ||
@@ -580,8 +568,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = [];
             }
             
-            // Agregar número con datos del usuario seleccionado
-            // Usar imagen_ruta si está disponible (ruta relativa), sino usar imagen (URL completa)
             const imagenParaGuardar = usuario.imagen_ruta || usuario.imagen || '';
             const nuevoNumero = {
                 uid: this.makeUid(),
@@ -592,13 +578,11 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 es_yo: false
             };
             
-            // Agregar al array y forzar reactividad
             this.redes[this.modalWhatsApp.index].numeros_whatsapp = [
                 ...this.redes[this.modalWhatsApp.index].numeros_whatsapp,
                 nuevoNumero
             ];
             
-            // Limpiar selección
             this.usuarioSeleccionado = '';
         },
         
@@ -613,13 +597,11 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             if (!confirm('¿Eliminar tu número de contacto?')) return;
             
             const numeros = [...(this.redes[this.modalWhatsApp.index].numeros_whatsapp || [])];
-            // Buscar el número "Yo" del usuario actual por nombre
             const indexYo = numeros.findIndex(n => 
                 n.es_yo === true && n.nombre && n.nombre.trim() === this.nombreUsuarioActual.trim()
             );
             
             if (indexYo !== -1) {
-                // Crear nuevo array sin el número "Yo" del usuario actual para forzar reactividad
                 const nuevosNumeros = numeros.filter((_, idx) => idx !== indexYo);
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = nuevosNumeros;
             }
@@ -633,7 +615,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             };
         },
         
-        
         eliminarNumeroWhatsApp(uid) {
             if (!this.esAdmin) {
                 alert('Solo los administradores pueden eliminar números.');
@@ -645,12 +626,10 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             if (!confirm('¿Eliminar este número?')) return;
             
             const numeros = [...(this.redes[this.modalWhatsApp.index].numeros_whatsapp || [])];
-            // Eliminar por uid (confiable aun con búsqueda/duplicados)
             this.redes[this.modalWhatsApp.index].numeros_whatsapp = numeros.filter(n => n.uid !== uid);
         },
         
         guardarNumerosWhatsApp() {
-            // Actualizar número "Yo" del usuario actual si existe
             if (this.modalWhatsApp.index !== null && this.tieneMiNumeroYo) {
                 const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
                 const indexYo = numeros.findIndex(n => 
@@ -663,7 +642,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                     };
                 }
             }
-            // Limpiar uid antes de enviar/guardar (solo es UI)
             if (this.modalWhatsApp.index !== null) {
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = (this.redes[this.modalWhatsApp.index].numeros_whatsapp || []).map(n => {
                     const { uid, ...rest } = n;
