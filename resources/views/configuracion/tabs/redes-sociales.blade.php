@@ -1,43 +1,43 @@
-<?php
-    $user = session('sams2_user');
-    $nombreUsuario = $user['name'] ?? 'Usuario';
-    $imagenUsuario = null;
-    $telefonoUsuario = null;
-    
-    if (($user['id'] ?? null) !== 'mega_admin' && isset($user['id'])) {
-        $usuarioDB = \App\Models\Usuario::find($user['id']);
-        if ($usuarioDB) {
-            $telefonoUsuario = $usuarioDB->telefono;
-            if ($usuarioDB->imagen_usuario) {
-                $imagenPath = trim($usuarioDB->imagen_usuario);
-                if (str_starts_with($imagenPath, 'http://') || str_starts_with($imagenPath, 'https://')) {
-                    $imagenUsuario = $imagenPath;
-                } elseif (str_starts_with($imagenPath, 'storage/')) {
-                    $imagenUsuario = asset('storage/' . str_replace('storage/', '', $imagenPath));
-                } elseif (str_starts_with($imagenPath, 'public/img/')) {
-                    $imagenUsuario = asset(str_replace('public/', '', $imagenPath));
-                } elseif (str_starts_with($imagenPath, 'img/')) {
-                    $imagenUsuario = asset($imagenPath);
-                } else {
-                    $imagenUsuario = asset($imagenPath);
-                }
+@php
+$user = session('sams2_user');
+$nombreUsuario = $user['name'] ?? 'Usuario';
+$imagenUsuario = null;
+$telefonoUsuario = null;
+
+if (($user['id'] ?? null) !== 'mega_admin' && isset($user['id'])) {
+    $usuarioDB = \App\Models\Usuario::find($user['id']);
+    if ($usuarioDB) {
+        $telefonoUsuario = $usuarioDB->telefono;
+        if ($usuarioDB->imagen_usuario) {
+            $imagenPath = trim($usuarioDB->imagen_usuario);
+            if (str_starts_with($imagenPath, 'http://') || str_starts_with($imagenPath, 'https://')) {
+                $imagenUsuario = $imagenPath;
+            } elseif (str_starts_with($imagenPath, 'storage/')) {
+                $imagenUsuario = asset('storage/' . str_replace('storage/', '', $imagenPath));
+            } elseif (str_starts_with($imagenPath, 'public/img/')) {
+                $imagenUsuario = asset(str_replace('public/', '', $imagenPath));
+            } elseif (str_starts_with($imagenPath, 'img/')) {
+                $imagenUsuario = asset($imagenPath);
+            } else {
+                $imagenUsuario = asset($imagenPath);
             }
         }
     }
-    
-    $esAdmin = false;
-    if (($user['role'] ?? null) === 'mega_admin') {
+}
+
+$esAdmin = false;
+if (($user['role'] ?? null) === 'mega_admin') {
+    $esAdmin = true;
+} elseif (isset($user['role_id'])) {
+    $role = \App\Models\Role::find($user['role_id']);
+    if ($role && strtolower($role->nombre) === 'administrador') {
         $esAdmin = true;
-    } elseif (isset($user['role_id'])) {
-        $role = \App\Models\Role::find($user['role_id']);
-        if ($role && strtolower($role->nombre) === 'administrador') {
-            $esAdmin = true;
-        }
     }
-    
-    use App\Helpers\PermisoHelper;
-    $puedeAgregarYo = PermisoHelper::puede('redes_sociales', 'acceso') || PermisoHelper::puede('redes_sociales', 'agregar') || PermisoHelper::puede('redes_sociales', 'editar') || $esAdmin;
-?>
+}
+
+use App\Helpers\PermisoHelper;
+$puedeAgregarYo = PermisoHelper::puede('redes_sociales', 'acceso') || PermisoHelper::puede('redes_sociales', 'agregar') || PermisoHelper::puede('redes_sociales', 'editar') || $esAdmin;
+@endphp
 
 <div x-show="tab === 'redes-sociales'" x-cloak class="space-y-6" x-data="redesSocialesManager({{ json_encode($redesSociales) }}, '{{ $nombreUsuario }}', {{ $esAdmin ? 'true' : 'false' }}, {{ $puedeAgregarYo ? 'true' : 'false' }}, '{{ $imagenUsuario }}', '{{ $telefonoUsuario }}', {{ json_encode($usuarios ?? []) }}, '{{ $user['id'] ?? '' }}')">
     <form action="{{ route('configuracion.store') }}" method="POST" class="space-y-6" enctype="multipart/form-data">
