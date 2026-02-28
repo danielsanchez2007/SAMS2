@@ -4,38 +4,27 @@
     $imagenUsuario = null;
     $telefonoUsuario = null;
     
-    // Obtener imagen y teléfono del usuario actual
     if (($user['id'] ?? null) !== 'mega_admin' && isset($user['id'])) {
         $usuarioDB = \App\Models\Usuario::find($user['id']);
         if ($usuarioDB) {
             $telefonoUsuario = $usuarioDB->telefono;
             if ($usuarioDB->imagen_usuario) {
                 $imagenPath = trim($usuarioDB->imagen_usuario);
-                // Si ya es una URL completa (http/https), usarla directamente
                 if (str_starts_with($imagenPath, 'http://') || str_starts_with($imagenPath, 'https://')) {
                     $imagenUsuario = $imagenPath;
-                }
-                // Si empieza con storage/, usar asset('storage/...')
-                elseif (str_starts_with($imagenPath, 'storage/')) {
+                } elseif (str_starts_with($imagenPath, 'storage/')) {
                     $imagenUsuario = asset('storage/' . str_replace('storage/', '', $imagenPath));
-                }
-                // Si empieza con public/img/, usar asset directamente
-                elseif (str_starts_with($imagenPath, 'public/img/')) {
+                } elseif (str_starts_with($imagenPath, 'public/img/')) {
                     $imagenUsuario = asset(str_replace('public/', '', $imagenPath));
-                }
-                // Si empieza con img/, usar asset directamente
-                elseif (str_starts_with($imagenPath, 'img/')) {
+                } elseif (str_starts_with($imagenPath, 'img/')) {
                     $imagenUsuario = asset($imagenPath);
-                }
-                // Para cualquier otra ruta, intentar con asset
-                else {
+                } else {
                     $imagenUsuario = asset($imagenPath);
                 }
             }
         }
     }
     
-    // Verificar si es administrador o mega_admin
     $esAdmin = false;
     if (($user['role'] ?? null) === 'mega_admin') {
         $esAdmin = true;
@@ -46,8 +35,6 @@
         }
     }
     
-    // Verificar si tiene permiso de redes_sociales (para agregar su propio número "Yo")
-    // Cualquier usuario con acceso al módulo puede agregar su propio número "Yo"
     use App\Helpers\PermisoHelper;
     $puedeAgregarYo = PermisoHelper::puede('redes_sociales', 'acceso') || PermisoHelper::puede('redes_sociales', 'agregar') || PermisoHelper::puede('redes_sociales', 'editar') || $esAdmin;
 @endphp
@@ -73,7 +60,6 @@
                 <template x-for="(red, index) in redes" :key="index">
                     <div class="bg-white rounded-xl p-5 border-2 border-gray-200 shadow-sm">
                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                            <!-- Nombre -->
                             <div class="md:col-span-3">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Nombre</label>
                                 <input type="text" 
@@ -83,7 +69,6 @@
                                     class="w-full px-3 py-2 rounded-lg border border-gray-900 bg-white text-sm text-gray-900 placeholder-gray-400 focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none transition">
                             </div>
                             
-                            <!-- URL -->
                             <div class="md:col-span-4" x-show="red.icono_svg !== 'whatsapp'">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">URL / Enlace</label>
                                 <input type="text" 
@@ -94,7 +79,6 @@
                                     class="w-full px-3 py-2 rounded-lg border border-gray-900 bg-white text-sm text-gray-900 placeholder-gray-400 focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none transition">
                             </div>
 
-                            <!-- WhatsApp: Botón para agregar números -->
                             <div class="md:col-span-4" x-show="red.icono_svg === 'whatsapp'">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Números de WhatsApp</label>
                                 <button type="button" @click="mostrarModalWhatsApp(index)" 
@@ -108,7 +92,6 @@
                                 <input type="hidden" :name="`redes_sociales[${index}][url]`" :value="red.url || 'whatsapp://'">
                             </div>
                             
-                            <!-- Tipo de Icono -->
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Tipo Icono</label>
                                 <select x-model="red.tipo_icono" 
@@ -120,7 +103,6 @@
                                 </select>
                             </div>
                             
-                            <!-- Icono SVG Predefinido -->
                             <div class="md:col-span-2" x-show="red.tipo_icono === 'svg'">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Icono SVG</label>
                                 <select x-model="red.icono_svg" 
@@ -145,7 +127,6 @@
                                 </select>
                             </div>
                             
-                            <!-- Icono Imagen Personalizada -->
                             <div class="md:col-span-2" x-show="red.tipo_icono === 'imagen'">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Icono Imagen</label>
                                 <input type="file" 
@@ -160,7 +141,6 @@
                                 </template>
                             </div>
                             
-                            <!-- Botón Eliminar -->
                             <div class="md:col-span-1 flex items-end">
                                 <button type="button" @click="eliminarRed(index)" 
                                     class="w-full px-3 py-2 rounded-lg bg-red-50 border-2 border-red-300 text-red-700 font-semibold text-sm hover:bg-red-100 transition-all">
@@ -189,7 +169,6 @@
         </div>
     </form>
 
-    <!-- Modal para gestionar números de WhatsApp -->
     <div x-show="modalWhatsApp.show" x-cloak 
         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         @click.self="modalWhatsApp.show = false">
@@ -205,7 +184,6 @@
                 </div>
             </div>
             <div class="p-6 space-y-4">
-                <!-- Campo "Yo" - Siempre visible si tiene permisos, pero solo si no tiene ya su número -->
                 <div x-show="puedeAgregarYo && !tieneMiNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
                     <button type="button" @click="agregarNumeroYo()" 
                         class="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold transition-all">
@@ -222,7 +200,6 @@
                     <p class="text-xs text-blue-600 mt-2">Agrega tu propio número de contacto. Se cargarán automáticamente tu nombre y foto. Deberás ingresar manualmente tu número de WhatsApp y una breve descripción.</p>
                 </div>
 
-                <!-- Número "Yo" (si existe) -->
                 <div x-show="tieneNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
@@ -276,7 +253,6 @@
                     </div>
                 </div>
 
-                <!-- Buscador -->
                 <div class="relative">
                     <input type="text" 
                         x-model="modalWhatsApp.busqueda"
@@ -287,7 +263,6 @@
                     </svg>
                 </div>
 
-                <!-- Lista de números -->
                 <div class="space-y-3 max-h-64 overflow-y-auto">
                     <template x-for="numero in numerosFiltrados" :key="numero.uid || ('num-' + numero.numero)">
                         <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all">
@@ -342,7 +317,6 @@
                     </template>
                 </div>
 
-                <!-- Selector de usuario para agregar número (solo admin) -->
                 <div x-show="esAdmin" class="space-y-2">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Seleccionar Usuario</label>
                     <select x-model="usuarioSeleccionado" @change="agregarNumeroDesdeUsuario()" 
