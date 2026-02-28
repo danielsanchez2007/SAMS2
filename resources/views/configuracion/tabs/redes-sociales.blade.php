@@ -138,6 +138,188 @@ $userIdActual = $userIdActual ?? '';
             </button>
         </div>
     </form>
+
+    <!-- Modal para gestionar numeros de WhatsApp -->
+    <div x-show="modalWhatsApp.show" x-cloak 
+        class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        @click.self="modalWhatsApp.show = false">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-gray-900">Gestionar Numeros de WhatsApp</h3>
+                    <button type="button" @click="modalWhatsApp.show = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 space-y-4">
+                <!-- Seccion para agregar "Yo" -->
+                <div x-show="puedeAgregarYo && !tieneMiNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                    <button type="button" @click="agregarNumeroYo()" 
+                        class="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold transition-all">
+                        <span class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            Agregar "Yo"
+                        </span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </button>
+                    <p class="text-xs text-blue-600 mt-2">Agrega tu propio numero de contacto. Se cargaran automaticamente tu nombre y foto. Deberas ingresar manualmente tu numero de WhatsApp y una breve descripcion.</p>
+                </div>
+
+                <!-- Seccion para editar "Mi Numero" -->
+                <div x-show="tieneNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <template x-if="numeroYo.imagen && numeroYo.imagen.trim() !== ''">
+                                <div>
+                                    <img :src="numeroYo.imagen" alt="Foto" 
+                                         class="w-20 h-20 rounded-full object-cover border-4 border-blue-400 shadow-lg"
+                                         @error="$el.style.display='none'; $el.nextElementSibling.style.display='flex';"
+                                         loading="lazy">
+                                    <div class="w-20 h-20 rounded-full bg-blue-200 flex items-center justify-center border-4 border-blue-400 shadow-lg" style="display: none;">
+                                        <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="!numeroYo.imagen || numeroYo.imagen.trim() === ''">
+                                <div class="w-20 h-20 rounded-full bg-blue-200 flex items-center justify-center border-4 border-blue-400 shadow-lg">
+                                    <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                </div>
+                            </template>
+                            <span class="text-lg font-bold text-blue-700">Mi Numero</span>
+                        </div>
+                        <button type="button" x-show="puedeAgregarYo" @click="eliminarNumeroYo()" 
+                            class="px-3 py-1 rounded-lg bg-red-50 border-2 border-red-300 text-red-700 font-semibold text-xs hover:bg-red-100 transition-all">
+                            🗑️ Eliminar
+                        </button>
+                    </div>
+                    <div class="space-y-2">
+                        <input type="text" 
+                            x-model="numeroYo.numero"
+                            placeholder="Numero de WhatsApp (ej: 573001234567) *" 
+                            :readonly="!puedeAgregarYo"
+                            :class="puedeAgregarYo ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
+                            required
+                            class="w-full px-3 py-2 rounded-lg border border-blue-300 text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
+                        <input type="text" 
+                            x-model="numeroYo.nombre"
+                            placeholder="Nombre" 
+                            readonly
+                            class="w-full px-3 py-2 rounded-lg border border-blue-300 bg-gray-100 text-sm text-gray-600 cursor-not-allowed">
+                        <textarea 
+                            x-model="numeroYo.descripcion"
+                            placeholder="Breve descripcion (opcional)" 
+                            rows="2"
+                            :readonly="!puedeAgregarYo"
+                            :class="puedeAgregarYo ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
+                            class="w-full px-3 py-2 rounded-lg border border-blue-300 text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none resize-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Buscador -->
+                <div class="relative">
+                    <input type="text" 
+                        x-model="modalWhatsApp.busqueda"
+                        placeholder="Buscar numero o nombre..." 
+                        class="w-full px-4 py-3 pl-10 rounded-lg border border-gray-300 focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
+                    <svg class="w-5 h-5 absolute left-3 top-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+
+                <!-- Lista de numeros existentes -->
+                <div class="space-y-3 max-h-64 overflow-y-auto">
+                    <template x-for="numero in numerosFiltrados" :key="numero.uid || ('num-' + numero.numero)">
+                        <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all">
+                            <div class="flex-shrink-0">
+                                <template x-if="numero.imagen && numero.imagen.trim() !== ''">
+                                    <div>
+                                        <img :src="numero.imagen" alt="Foto" 
+                                             class="w-20 h-20 rounded-full object-cover border-4 border-gray-300 shadow-lg"
+                                             @error="$el.style.display='none'; $el.nextElementSibling.style.display='flex';"
+                                             loading="lazy">
+                                        <div class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 shadow-lg" style="display: none;">
+                                            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="!numero.imagen || numero.imagen.trim() === ''">
+                                    <div class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 shadow-lg">
+                                        <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="flex-1">
+                                <input type="text" 
+                                    x-model="numero.numero"
+                                    placeholder="Numero (ej: 573001234567)" 
+                                    :readonly="!esAdmin"
+                                    :class="esAdmin ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
+                                    class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
+                                <input type="text" 
+                                    x-model="numero.nombre"
+                                    placeholder="Nombre (opcional)" 
+                                    :readonly="!esAdmin"
+                                    :class="esAdmin ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
+                                    class="w-full px-3 py-2 mt-2 rounded-lg border border-gray-300 text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
+                                <textarea 
+                                    x-model="numero.descripcion"
+                                    placeholder="Descripcion (opcional)" 
+                                    rows="2"
+                                    :readonly="!esAdmin"
+                                    :class="esAdmin ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
+                                    class="w-full px-3 py-2 mt-2 rounded-lg border border-gray-300 text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none resize-none"></textarea>
+                            </div>
+                            <button type="button" x-show="esAdmin" @click="eliminarNumeroWhatsApp(numero.uid)" 
+                                class="px-3 py-2 rounded-lg bg-red-50 border-2 border-red-300 text-red-700 font-semibold text-sm hover:bg-red-100 transition-all">
+                                🗑️
+                            </button>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Selector de usuarios para administradores -->
+                <div x-show="esAdmin" class="space-y-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Seleccionar Usuario</label>
+                    <select x-model="usuarioSeleccionado" @change="agregarNumeroDesdeUsuario()" 
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
+                        <option value="">-- Seleccionar usuario --</option>
+                        <template x-for="usuario in usuarios" :key="usuario.id">
+                            <option :value="usuario.id" x-text="usuario.nombre"></option>
+                        </template>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Al seleccionar un usuario, se agregara automaticamente con su nombre, foto y telefono.</p>
+                </div>
+                <div x-show="!esAdmin" class="text-center py-4 text-sm text-gray-500">
+                    Solo los administradores pueden agregar, editar o eliminar numeros de contacto.
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 flex justify-end gap-4">
+                <button type="button" @click="modalWhatsApp.show = false" 
+                    class="px-6 py-2 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">
+                    Cancelar
+                </button>
+                <button type="button" @click="guardarNumerosWhatsApp()" 
+                    class="px-6 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition">
+                    Guardar Numeros
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
