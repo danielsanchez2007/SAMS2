@@ -85,14 +85,7 @@
                 </button>
             @endif
 
-            <button type="button" @click="showExportModal = true" 
-                    class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all duration-300 shadow-md">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2m-4-3v1m0 0v1m0-1h1m-1 0h-1"/>
-                </svg>
-                Exportar
-            </button>
-        </div>
+                    </div>
     </div>
 
     <!-- Tabla según pestaña -->
@@ -288,121 +281,6 @@
         @endif
     </div>
 
-    <!-- Modal Exportar -->
-    <div x-show="showExportModal" 
-         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" 
-         >
-        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl my-8 p-8 border border-slate-700/60 backdrop-blur-sm" @click.stop>
-            <h3 class="text-2xl font-bold text-indigo-400 mb-6 flex items-center gap-3">
-                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2m-4-3v1m0 0v1m0-1h1m-1 0h-1"/>
-                </svg>
-                Exportar {{ ucfirst($tab) }}
-            </h3>
-
-            <div class="bg-slate-950/60 rounded-xl p-6 mb-8 border border-slate-800/50 max-h-[65vh] overflow-y-auto">
-                <div class="flex justify-center gap-12 mb-8 opacity-90">
-                    @if(!empty($logoSecondary))
-                        <img src="{{ asset('storage/' . $logoSecondary) }}" alt="Logo secundario" class="h-14 object-contain bg-white border border-gray-900 rounded-lg px-4 py-2">
-                    @else
-                        <img src="{{ asset('logos/LOGO-INSTITUTO-PREVENTION-WORLD.png') }}" alt="Logo secundario" class="h-14 object-contain bg-white border border-gray-900 rounded-lg px-4 py-2">
-                    @endif
-                    @if(!empty($logoMain))
-                        <img src="{{ asset('storage/' . $logoMain) }}" alt="Logo principal" class="h-14 object-contain bg-white border border-gray-900 rounded-lg px-4 py-2">
-                    @else
-                        <img src="{{ asset('img/logos/logoSams.png') }}" alt="Logo principal" class="h-14 object-contain bg-white border border-gray-900 rounded-lg px-4 py-2">
-                    @endif
-                </div>
-
-                <p class="text-lg font-semibold text-indigo-300 mb-5">
-                    {{ $tab === 'empresa' ? 'Empresas' : ($tab === 'sede' ? 'Sedes' : 'Bodegas') }}
-                </p>
-
-                <table class="w-full text-sm border-collapse">
-                    <thead>
-                        @if($tab === 'empresa')
-                            <tr class="bg-slate-800/80 text-slate-200 uppercase text-xs tracking-wider">
-                                <th class="border border-slate-700 p-3 text-left">Nombre</th>
-                                <th class="border border-slate-700 p-3 text-left">País</th>
-                            </tr>
-                        @elseif($tab === 'sede')
-                            <tr class="bg-slate-800/80 text-slate-200 uppercase text-xs tracking-wider">
-                                <th class="border border-slate-700 p-3 text-left">Nombre</th>
-                                <th class="border border-slate-700 p-3 text-left">País</th>
-                                <th class="border border-slate-700 p-3 text-left">Municipio</th>
-                                <th class="border border-slate-700 p-3 text-left">Departamento</th>
-                                <th class="border border-slate-700 p-3 text-left">Empresa</th>
-                            </tr>
-                        @else
-                            <tr class="bg-slate-800/80 text-slate-200 uppercase text-xs tracking-wider">
-                                <th class="border border-slate-700 p-3 text-left">Nombre</th>
-                                <th class="border border-slate-700 p-3 text-left">Sede</th>
-                                <th class="border border-slate-700 p-3 text-left">Ubicación</th>
-                            </tr>
-                        @endif
-                    </thead>
-                    <tbody class="divide-y divide-slate-800">
-                        @if($tab === 'empresa')
-                            @forelse($empresas as $i => $e)
-                                <tr class="hover:bg-slate-900/40 transition-colors">
-                                    <td class="border border-slate-800 p-3">{{ $e->nombre }}</td>
-                                    <td class="border border-slate-800 p-3">{{ $e->pais ?? '—' }}</td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="2" class="border border-slate-800 p-6 text-center text-slate-500">No hay empresas.</td></tr>
-                            @endforelse
-                        @elseif($tab === 'sede')
-                            @forelse($sedes as $i => $s)
-                                <tr class="hover:bg-slate-900/40 transition-colors">
-                                    <td class="border border-slate-800 p-3">{{ $s->nombre }}</td>
-                                    <td class="border border-slate-800 p-3">{{ $s->pais ?? '—' }}</td>
-                                    <td class="border border-slate-800 p-3">{{ $s->municipio ?? '—' }}</td>
-                                    <td class="border border-slate-800 p-3">{{ $s->departamento ?? '—' }}</td>
-                                    <td class="border border-slate-800 p-3">{{ $s->empresa->nombre ?? '—' }}</td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="5" class="border border-slate-800 p-6 text-center text-slate-500">No hay sedes.</td></tr>
-                            @endforelse
-                        @else
-                            @forelse($bodegas as $i => $b)
-                                @php $ubicacion = $b->sede ? trim(implode(', ', array_filter([$b->sede->municipio, $b->sede->departamento, $b->sede->pais]))) : '—'; @endphp
-                                <tr class="hover:bg-slate-900/40 transition-colors">
-                                    <td class="border border-slate-800 p-3">{{ $b->nombre }}</td>
-                                    <td class="border border-slate-800 p-3">{{ $b->sede->nombre ?? '—' }}</td>
-                                    <td class="border border-slate-800 p-3">{{ $ubicacion }}</td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="3" class="border border-slate-800 p-6 text-center text-slate-500">No hay bodegas.</td></tr>
-                            @endforelse
-                        @endif
-                    </tbody>
-                </table>
-            </div>
-
-            <p class="text-sm text-slate-500 mb-4">
-                Exportar pestaña actual: <strong class="text-slate-200">{{ strtoupper($tab) }}</strong>
-            </p>
-
-            <div class="flex flex-col sm:flex-row gap-4">
-                <a href="{{ route('empresas.export.excel', ['tab' => $tab]) }}" 
-                   class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-700/90 hover:bg-emerald-600 text-white font-semibold transition-all shadow-md hover:shadow-lg">
-                    Descargar Excel
-                </a>
-
-                <a href="{{ route('empresas.export.pdf', ['tab' => $tab]) }}" 
-                   class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-rose-700/90 hover:bg-rose-600 text-white font-semibold transition-all shadow-md hover:shadow-lg">
-                    Descargar PDF
-                </a>
-            </div>
-
-            <button type="button" 
-                    @click="showExportModal = false" 
-                    class="mt-6 w-full py-3.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200">
-                Cerrar
-            </button>
-        </div>
-    </div>
-
     <!-- Modales -->
     @include('empresas.modals.empresa')
     @include('empresas.modals.sede')
@@ -414,7 +292,6 @@
 // Script Alpine (sin cambios)
 function empresasApp() {
     return {
-        showExportModal: false,
         modalEmpresa: false,
         modalSede: false,
         modalBodega: false,
