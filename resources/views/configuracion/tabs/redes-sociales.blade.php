@@ -1,3 +1,4 @@
+{{-- Variables PHP --}}
 @php
 $user = session('sams2_user');
 $nombreUsuario = $user['name'] ?? 'Usuario';
@@ -39,6 +40,7 @@ use App\Helpers\PermisoHelper;
 $puedeAgregarYo = PermisoHelper::puede('redes_sociales', 'acceso') || PermisoHelper::puede('redes_sociales', 'agregar') || PermisoHelper::puede('redes_sociales', 'editar') || $esAdmin;
 @endphp
 
+{{-- Vista HTML --}}
 <div x-show="tab === 'redes-sociales'" x-cloak class="space-y-6" x-data="redesSocialesManager({{ json_encode($redesSociales) }}, '{{ $nombreUsuario }}', {{ $esAdmin ? 'true' : 'false' }}, {{ $puedeAgregarYo ? 'true' : 'false' }}, '{{ $imagenUsuario }}', '{{ $telefonoUsuario }}', {{ json_encode($usuarios ?? []) }}, '{{ $user['id'] ?? '' }}')">
     <form action="{{ route('configuracion.store') }}" method="POST" class="space-y-6" enctype="multipart/form-data">
         @csrf
