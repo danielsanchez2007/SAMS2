@@ -45,11 +45,12 @@ return [
     |
     */
     'gemini' => [
-        'api_key' => env('GEMINI_API_KEY'),
-        'api_url' => env('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta'),
-        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
-        'enabled' => env('GEMINI_ENABLED', true),
-        'timeout' => env('GEMINI_TIMEOUT', 30), // segundos
+        // Compatibilidad con nombres alternos de variables de entorno.
+        'api_key' => env('GEMINI_API_KEY') ?: env('GOOGLE_API_KEY') ?: env('GOOGLE_AI_API_KEY'),
+        'api_url' => env('GEMINI_API_URL', env('GOOGLE_AI_API_URL', 'https://generativelanguage.googleapis.com/v1beta')),
+        'model' => env('GEMINI_MODEL', env('GOOGLE_AI_MODEL', 'gemini-2.5-flash')),
+        'enabled' => env('GEMINI_ENABLED', env('GOOGLE_AI_ENABLED', true)),
+        'timeout' => env('GEMINI_TIMEOUT', env('GOOGLE_AI_TIMEOUT', 30)), // segundos
     ],
 
 ];

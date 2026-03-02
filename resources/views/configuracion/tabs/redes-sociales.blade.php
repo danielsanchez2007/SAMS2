@@ -1,57 +1,4 @@
-@php
-    $user = session('sams2_user');
-    $nombreUsuario = $user['name'] ?? 'Usuario';
-    $imagenUsuario = null;
-    $telefonoUsuario = null;
-    
-    // Obtener imagen y teléfono del usuario actual
-    if (($user['id'] ?? null) !== 'mega_admin' && isset($user['id'])) {
-        $usuarioDB = \App\Models\Usuario::find($user['id']);
-        if ($usuarioDB) {
-            $telefonoUsuario = $usuarioDB->telefono;
-            if ($usuarioDB->imagen_usuario) {
-                $imagenPath = trim($usuarioDB->imagen_usuario);
-                // Si ya es una URL completa (http/https), usarla directamente
-                if (str_starts_with($imagenPath, 'http://') || str_starts_with($imagenPath, 'https://')) {
-                    $imagenUsuario = $imagenPath;
-                }
-                // Si empieza con storage/, usar asset('storage/...')
-                elseif (str_starts_with($imagenPath, 'storage/')) {
-                    $imagenUsuario = asset('storage/' . str_replace('storage/', '', $imagenPath));
-                }
-                // Si empieza con public/img/, usar asset directamente
-                elseif (str_starts_with($imagenPath, 'public/img/')) {
-                    $imagenUsuario = asset(str_replace('public/', '', $imagenPath));
-                }
-                // Si empieza con img/, usar asset directamente
-                elseif (str_starts_with($imagenPath, 'img/')) {
-                    $imagenUsuario = asset($imagenPath);
-                }
-                // Para cualquier otra ruta, intentar con asset
-                else {
-                    $imagenUsuario = asset($imagenPath);
-                }
-            }
-        }
-    }
-    
-    // Verificar si es administrador o mega_admin
-    $esAdmin = false;
-    if (($user['role'] ?? null) === 'mega_admin') {
-        $esAdmin = true;
-    } elseif (isset($user['role_id'])) {
-        $role = \App\Models\Role::find($user['role_id']);
-        if ($role && strtolower($role->nombre) === 'administrador') {
-            $esAdmin = true;
-        }
-    }
-    
-    // Verificar si tiene permiso de redes_sociales (para agregar su propio número "Yo")
-    // Cualquier usuario con acceso al módulo puede agregar su propio número "Yo"
-    use App\Helpers\PermisoHelper;
-    $puedeAgregarYo = PermisoHelper::puede('redes_sociales', 'acceso') || PermisoHelper::puede('redes_sociales', 'agregar') || PermisoHelper::puede('redes_sociales', 'editar') || $esAdmin;
-@endphp
-<div x-show="tab === 'redes-sociales'" x-cloak class="space-y-6" x-data="redesSocialesManager({{ json_encode($redesSociales) }}, '{{ $nombreUsuario }}', {{ $esAdmin ? 'true' : 'false' }}, {{ $puedeAgregarYo ? 'true' : 'false' }}, '{{ $imagenUsuario }}', '{{ $telefonoUsuario }}', {{ json_encode($usuarios ?? []) }}, '{{ $user['id'] ?? '' }}')">
+<div x-show="tab === 'redes-sociales'" x-cloak class="space-y-6" x-data="redesSocialesManager({{ json_encode($redesSociales) }}, '{{ $nombreUsuario }}', '{{ $esAdmin ? 'true' : 'false' }}', '{{ $puedeAgregarYo ? 'true' : 'false' }}', '{{ $imagenUsuario }}', '{{ $telefonoUsuario }}', '{{ json_encode($usuarios ?? []) }}', '{{ $userIdActual }}')">
     <form action="{{ route('configuracion.store') }}" method="POST" class="space-y-6" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="tab" value="redes-sociales">
@@ -60,7 +7,7 @@
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-900">Redes Sociales y Enlaces</h3>
-                    <p class="text-sm text-gray-600 mt-1">Agrega cualquier red social, página web o enlace con su icono personalizado.</p>
+                    <p class="text-sm text-gray-600 mt-1">Agrega cualquier red social, pagina web o enlace con su icono personalizado.</p>
                 </div>
                 <button type="button" @click="agregarRed()" 
                     class="px-4 py-2 rounded-lg tema-gradient text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all">
@@ -72,7 +19,6 @@
                 <template x-for="(red, index) in redes" :key="index">
                     <div class="bg-white rounded-xl p-5 border-2 border-gray-200 shadow-sm">
                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                            <!-- Nombre -->
                             <div class="md:col-span-3">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Nombre</label>
                                 <input type="text" 
@@ -82,7 +28,6 @@
                                     class="w-full px-3 py-2 rounded-lg border border-gray-900 bg-white text-sm text-gray-900 placeholder-gray-400 focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none transition">
                             </div>
                             
-                            <!-- URL -->
                             <div class="md:col-span-4" x-show="red.icono_svg !== 'whatsapp'">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">URL / Enlace</label>
                                 <input type="text" 
@@ -93,21 +38,19 @@
                                     class="w-full px-3 py-2 rounded-lg border border-gray-900 bg-white text-sm text-gray-900 placeholder-gray-400 focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none transition">
                             </div>
 
-                            <!-- WhatsApp: Botón para agregar números -->
                             <div class="md:col-span-4" x-show="red.icono_svg === 'whatsapp'">
-                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Números de WhatsApp</label>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1.5">Numeros de WhatsApp</label>
                                 <button type="button" @click="mostrarModalWhatsApp(index)" 
                                     class="w-full px-3 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 font-semibold text-sm hover:bg-green-100 transition-all flex items-center justify-center gap-2">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                     </svg>
-                                    Gestionar Números (<span x-text="red.numeros_whatsapp ? red.numeros_whatsapp.length : 0"></span>)
+                                    Gestionar Numeros (<span x-text="red.numeros_whatsapp ? red.numeros_whatsapp.length : 0"></span>)
                                 </button>
                                 <input type="hidden" :name="`redes_sociales[${index}][numeros_whatsapp]`" :value="JSON.stringify(red.numeros_whatsapp || [])">
                                 <input type="hidden" :name="`redes_sociales[${index}][url]`" :value="red.url || 'whatsapp://'">
                             </div>
                             
-                            <!-- Tipo de Icono -->
                             <div class="md:col-span-2">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Tipo Icono</label>
                                 <select x-model="red.tipo_icono" 
@@ -119,7 +62,6 @@
                                 </select>
                             </div>
                             
-                            <!-- Icono SVG Predefinido -->
                             <div class="md:col-span-2" x-show="red.tipo_icono === 'svg'">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Icono SVG</label>
                                 <select x-model="red.icono_svg" 
@@ -140,11 +82,10 @@
                                     <option value="github">GitHub</option>
                                     <option value="web">Web/Globo</option>
                                     <option value="email">Email</option>
-                                    <option value="phone">Teléfono</option>
+                                    <option value="phone">Telefono</option>
                                 </select>
                             </div>
                             
-                            <!-- Icono Imagen Personalizada -->
                             <div class="md:col-span-2" x-show="red.tipo_icono === 'imagen'">
                                 <label class="block text-xs font-semibold text-gray-700 mb-1.5">Icono Imagen</label>
                                 <input type="file" 
@@ -159,11 +100,10 @@
                                 </template>
                             </div>
                             
-                            <!-- Botón Eliminar -->
                             <div class="md:col-span-1 flex items-end">
                                 <button type="button" @click="eliminarRed(index)" 
                                     class="w-full px-3 py-2 rounded-lg bg-red-50 border-2 border-red-300 text-red-700 font-semibold text-sm hover:bg-red-100 transition-all">
-                                    🗑️
+                                    
                                 </button>
                             </div>
                         </div>
@@ -188,14 +128,13 @@
         </div>
     </form>
 
-    <!-- Modal para gestionar números de WhatsApp -->
     <div x-show="modalWhatsApp.show" x-cloak 
         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         @click.self="modalWhatsApp.show = false">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div class="p-6 border-b border-gray-200">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-bold text-gray-900">Gestionar Números de WhatsApp</h3>
+                    <h3 class="text-xl font-bold text-gray-900">Gestionar Numeros de WhatsApp</h3>
                     <button type="button" @click="modalWhatsApp.show = false" class="text-gray-400 hover:text-gray-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -204,7 +143,6 @@
                 </div>
             </div>
             <div class="p-6 space-y-4">
-                <!-- Campo "Yo" - Siempre visible si tiene permisos, pero solo si no tiene ya su número -->
                 <div x-show="puedeAgregarYo && !tieneMiNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
                     <button type="button" @click="agregarNumeroYo()" 
                         class="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold transition-all">
@@ -218,10 +156,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
                     </button>
-                    <p class="text-xs text-blue-600 mt-2">Agrega tu propio número de contacto. Se cargarán automáticamente tu nombre y foto. Deberás ingresar manualmente tu número de WhatsApp y una breve descripción.</p>
+                    <p class="text-xs text-blue-600 mt-2">Agrega tu propio numero de contacto. Se cargaran automaticamente tu nombre y foto. Deberas ingresar manualmente tu numero de WhatsApp y una breve descripcion.</p>
                 </div>
 
-                <!-- Número "Yo" (si existe) -->
                 <div x-show="tieneNumeroYo" class="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
@@ -245,7 +182,7 @@
                                     </svg>
                                 </div>
                             </template>
-                            <span class="text-lg font-bold text-blue-700">Mi Número</span>
+                            <span class="text-lg font-bold text-blue-700">Mi Numero</span>
                         </div>
                         <button type="button" x-show="puedeAgregarYo" @click="eliminarNumeroYo()" 
                             class="px-3 py-1 rounded-lg bg-red-50 border-2 border-red-300 text-red-700 font-semibold text-xs hover:bg-red-100 transition-all">
@@ -255,7 +192,7 @@
                     <div class="space-y-2">
                         <input type="text" 
                             x-model="numeroYo.numero"
-                            placeholder="Número de WhatsApp (ej: 573001234567) *" 
+                            placeholder="Numero de WhatsApp (ej: 573001234567) *" 
                             :readonly="!puedeAgregarYo"
                             :class="puedeAgregarYo ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
                             required
@@ -267,7 +204,7 @@
                             class="w-full px-3 py-2 rounded-lg border border-blue-300 bg-gray-100 text-sm text-gray-600 cursor-not-allowed">
                         <textarea 
                             x-model="numeroYo.descripcion"
-                            placeholder="Breve descripción (opcional)" 
+                            placeholder="Breve descripcion (opcional)" 
                             rows="2"
                             :readonly="!puedeAgregarYo"
                             :class="puedeAgregarYo ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
@@ -275,18 +212,16 @@
                     </div>
                 </div>
 
-                <!-- Buscador -->
                 <div class="relative">
                     <input type="text" 
                         x-model="modalWhatsApp.busqueda"
-                        placeholder="Buscar número o nombre..." 
+                        placeholder="Buscar numero o nombre..." 
                         class="w-full px-4 py-3 pl-10 rounded-lg border border-gray-300 focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
                     <svg class="w-5 h-5 absolute left-3 top-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
                 </div>
 
-                <!-- Lista de números -->
                 <div class="space-y-3 max-h-64 overflow-y-auto">
                     <template x-for="numero in numerosFiltrados" :key="numero.uid || ('num-' + numero.numero)">
                         <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all">
@@ -315,7 +250,7 @@
                             <div class="flex-1">
                                 <input type="text" 
                                     x-model="numero.numero"
-                                    placeholder="Número (ej: 573001234567)" 
+                                    placeholder="Numero (ej: 573001234567)" 
                                     :readonly="!esAdmin"
                                     :class="esAdmin ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
                                     class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
@@ -327,7 +262,7 @@
                                     class="w-full px-3 py-2 mt-2 rounded-lg border border-gray-300 text-sm focus:border-[var(--tema-primary)] focus:ring-2 focus:ring-[var(--tema-primary)]/20 outline-none">
                                 <textarea 
                                     x-model="numero.descripcion"
-                                    placeholder="Descripción (opcional)" 
+                                    placeholder="Descripcion (opcional)" 
                                     rows="2"
                                     :readonly="!esAdmin"
                                     :class="esAdmin ? 'bg-white' : 'bg-gray-100 cursor-not-allowed'"
@@ -341,7 +276,6 @@
                     </template>
                 </div>
 
-                <!-- Selector de usuario para agregar número (solo admin) -->
                 <div x-show="esAdmin" class="space-y-2">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Seleccionar Usuario</label>
                     <select x-model="usuarioSeleccionado" @change="agregarNumeroDesdeUsuario()" 
@@ -351,10 +285,10 @@
                             <option :value="usuario.id" x-text="usuario.nombre"></option>
                         </template>
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Al seleccionar un usuario, se agregará automáticamente con su nombre, foto y teléfono.</p>
+                    <p class="text-xs text-gray-500 mt-1">Al seleccionar un usuario, se agregara automaticamente con su nombre, foto y telefono.</p>
                 </div>
                 <div x-show="!esAdmin" class="text-center py-4 text-sm text-gray-500">
-                    Solo los administradores pueden agregar, editar o eliminar números de contacto.
+                    Solo los administradores pueden agregar, editar o eliminar numeros de contacto.
                 </div>
             </div>
             <div class="p-6 border-t border-gray-200 flex justify-end gap-4">
@@ -364,7 +298,7 @@
                 </button>
                 <button type="button" @click="guardarNumerosWhatsApp()" 
                     class="px-6 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition">
-                    Guardar Números
+                    Guardar Numeros
                 </button>
             </div>
         </div>
@@ -389,9 +323,7 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         userIdActual: userIdActual,
         nombreUsuarioActual: nombreUsuario,
         redes: redesIniciales.map(r => {
-            // Asegurar que la URL se cargue correctamente
             let url = r.url || '';
-            // Si no es WhatsApp pero tiene whatsapp://, limpiarlo
             if (r.icono_svg !== 'whatsapp' && url === 'whatsapp://') {
                 url = '';
             }
@@ -417,10 +349,10 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         telefonoUsuario: telefonoUsuario,
         usuarioSeleccionadoData: null,
         numeroYo: {
-            numero: '', // Vacío inicialmente, el usuario lo completará manualmente
-            nombre: nombreUsuario, // Pre-llenado automáticamente
-            descripcion: '', // Vacío inicialmente, el usuario lo completará manualmente
-            imagen: imagenUsuario || '', // Pre-llenado automáticamente
+            numero: '',
+            nombre: nombreUsuario,
+            descripcion: '',
+            imagen: imagenUsuario || '',
             es_yo: true
         },
         modalWhatsApp: {
@@ -436,17 +368,14 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         },
         
         get tieneMiNumeroYo() {
-            // Verificar si el usuario actual ya tiene su número "yo" agregado
             if (this.modalWhatsApp.index === null) return false;
             const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
-            // Verificar por nombre (más confiable que por ID ya que el nombre viene de la sesión)
             return numeros.some(n => n.es_yo === true && n.nombre && n.nombre.trim() === this.nombreUsuarioActual.trim());
         },
         
         get numerosFiltrados() {
             if (!this.modalWhatsApp.show || this.modalWhatsApp.index === null) return [];
             const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
-            // Filtrar el número "Yo" de la lista normal
             const numerosNormales = numeros.filter(n => !n.es_yo).map(n => ({
                 ...n,
                 uid: n.uid || (n.uid = this.makeUid()),
@@ -473,7 +402,7 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         },
         
         eliminarRed(index) {
-            if (confirm('¿Estás seguro de eliminar esta red social?')) {
+            if (confirm('¿Estas seguro de eliminar esta red social?')) {
                 this.redes.splice(index, 1);
             }
         },
@@ -486,7 +415,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             if (!this.redes[index].numeros_whatsapp) {
                 this.redes[index].numeros_whatsapp = [];
             }
-            // Asegurar uid en todos los registros
             this.redes[index].numeros_whatsapp = (this.redes[index].numeros_whatsapp || []).map(n => ({
                 uid: n.uid || this.makeUid(),
                 numero: n.numero || '',
@@ -495,19 +423,17 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 imagen: n.imagen || '',
                 es_yo: !!n.es_yo,
             }));
-            // Cargar número "Yo" del usuario actual si existe (verificar por nombre)
             const numeroYoExistente = this.redes[index].numeros_whatsapp.find(n => 
                 n.es_yo === true && n.nombre && n.nombre.trim() === this.nombreUsuarioActual.trim()
             );
             if (numeroYoExistente) {
                 this.numeroYo = { ...numeroYoExistente };
             } else {
-                // Inicializar con nombre e imagen, pero número y descripción vacíos
                 this.numeroYo = {
-                    numero: '', // Vacío para que el usuario lo complete manualmente
-                    nombre: this.nombreUsuario, // Pre-llenado automáticamente
-                    descripcion: '', // Vacío para que el usuario lo complete manualmente
-                    imagen: this.imagenUsuario || '', // Pre-llenado automáticamente
+                    numero: '',
+                    nombre: this.nombreUsuario,
+                    descripcion: '',
+                    imagen: this.imagenUsuario || '',
                     es_yo: true
                 };
             }
@@ -515,13 +441,12 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
         
         agregarNumeroYo() {
             if (!this.puedeAgregarYo) {
-                alert('No tienes permiso para agregar tu número de contacto.');
+                alert('No tienes permiso para agregar tu numero de contacto.');
                 return;
             }
             
-            // Verificar si ya tiene su número "yo"
             if (this.tieneMiNumeroYo) {
-                alert('Ya tienes tu número de contacto agregado. Puedes editarlo en la sección "Mi Número" arriba.');
+                alert('Ya tienes tu numero de contacto agregado. Puedes editarlo en la seccion "Mi Numero" arriba.');
                 return;
             }
             
@@ -529,28 +454,25 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 if (!this.redes[this.modalWhatsApp.index].numeros_whatsapp) {
                     this.redes[this.modalWhatsApp.index].numeros_whatsapp = [];
                 }
-                // Pre-llenar solo nombre e imagen, dejar número y descripción vacíos para que el usuario los complete
                 const nuevoNumeroYo = {
                     uid: this.makeUid(),
-                    numero: '', // Vacío para que el usuario lo complete manualmente
-                    nombre: this.nombreUsuario, // Pre-llenado automáticamente
-                    descripcion: '', // Vacío para que el usuario lo complete manualmente
-                    imagen: this.imagenUsuario || '', // Pre-llenado automáticamente
+                    numero: '',
+                    nombre: this.nombreUsuario,
+                    descripcion: '',
+                    imagen: this.imagenUsuario || '',
                     es_yo: true
                 };
-                // Crear nuevo array para forzar reactividad
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = [
                     ...this.redes[this.modalWhatsApp.index].numeros_whatsapp,
                     nuevoNumeroYo
                 ];
-                // Actualizar el objeto numeroYo para que se muestre en el formulario
                 this.numeroYo = { ...nuevoNumeroYo };
             }
         },
         
         agregarNumeroDesdeUsuario() {
             if (!this.esAdmin) {
-                alert('Solo los administradores pueden agregar números.');
+                alert('Solo los administradores pueden agregar numeros.');
                 return;
             }
             
@@ -563,7 +485,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             const usuario = this.usuarios.find(u => u.id == this.usuarioSeleccionado);
             if (!usuario) return;
             
-            // Verificar si el usuario ya está agregado (por teléfono o nombre)
             const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
             const yaExiste = numeros.some(n => 
                 (n.numero && usuario.telefono && n.numero === usuario.telefono) ||
@@ -571,7 +492,7 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             );
             
             if (yaExiste) {
-                alert('Este usuario ya está agregado en la lista.');
+                alert('Este usuario ya esta agregado en la lista.');
                 this.usuarioSeleccionado = '';
                 return;
             }
@@ -580,8 +501,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = [];
             }
             
-            // Agregar número con datos del usuario seleccionado
-            // Usar imagen_ruta si está disponible (ruta relativa), sino usar imagen (URL completa)
             const imagenParaGuardar = usuario.imagen_ruta || usuario.imagen || '';
             const nuevoNumero = {
                 uid: this.makeUid(),
@@ -592,34 +511,30 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                 es_yo: false
             };
             
-            // Agregar al array y forzar reactividad
             this.redes[this.modalWhatsApp.index].numeros_whatsapp = [
                 ...this.redes[this.modalWhatsApp.index].numeros_whatsapp,
                 nuevoNumero
             ];
             
-            // Limpiar selección
             this.usuarioSeleccionado = '';
         },
         
         eliminarNumeroYo() {
             if (!this.puedeAgregarYo) {
-                alert('No tienes permiso para eliminar tu número de contacto.');
+                alert('No tienes permiso para eliminar tu numero de contacto.');
                 return;
             }
             
             if (this.modalWhatsApp.index === null) return;
             
-            if (!confirm('¿Eliminar tu número de contacto?')) return;
+            if (!confirm('¿Eliminar tu numero de contacto?')) return;
             
             const numeros = [...(this.redes[this.modalWhatsApp.index].numeros_whatsapp || [])];
-            // Buscar el número "Yo" del usuario actual por nombre
             const indexYo = numeros.findIndex(n => 
                 n.es_yo === true && n.nombre && n.nombre.trim() === this.nombreUsuarioActual.trim()
             );
             
             if (indexYo !== -1) {
-                // Crear nuevo array sin el número "Yo" del usuario actual para forzar reactividad
                 const nuevosNumeros = numeros.filter((_, idx) => idx !== indexYo);
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = nuevosNumeros;
             }
@@ -633,24 +548,21 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
             };
         },
         
-        
         eliminarNumeroWhatsApp(uid) {
             if (!this.esAdmin) {
-                alert('Solo los administradores pueden eliminar números.');
+                alert('Solo los administradores pueden eliminar numeros.');
                 return;
             }
             
             if (this.modalWhatsApp.index === null) return;
             
-            if (!confirm('¿Eliminar este número?')) return;
+            if (!confirm('¿Eliminar este numero?')) return;
             
             const numeros = [...(this.redes[this.modalWhatsApp.index].numeros_whatsapp || [])];
-            // Eliminar por uid (confiable aun con búsqueda/duplicados)
             this.redes[this.modalWhatsApp.index].numeros_whatsapp = numeros.filter(n => n.uid !== uid);
         },
         
         guardarNumerosWhatsApp() {
-            // Actualizar número "Yo" del usuario actual si existe
             if (this.modalWhatsApp.index !== null && this.tieneMiNumeroYo) {
                 const numeros = this.redes[this.modalWhatsApp.index].numeros_whatsapp || [];
                 const indexYo = numeros.findIndex(n => 
@@ -663,7 +575,6 @@ function redesSocialesManager(redesIniciales = [], nombreUsuario = '', esAdmin =
                     };
                 }
             }
-            // Limpiar uid antes de enviar/guardar (solo es UI)
             if (this.modalWhatsApp.index !== null) {
                 this.redes[this.modalWhatsApp.index].numeros_whatsapp = (this.redes[this.modalWhatsApp.index].numeros_whatsapp || []).map(n => {
                     const { uid, ...rest } = n;

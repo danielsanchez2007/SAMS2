@@ -19,6 +19,7 @@ class EquipoDebaja extends Model
         'tiene_certificacion', 'certificacion_fabricante',
         'tiene_imagen_general', 'imagen_general',
         'tiene_imagen_etiqueta', 'imagen_etiqueta',
+        'fecha_inspeccion', 'motivo_baja', 'responsable_nombre', 'responsable_cedula', 'gerente_nombre', 'gerente_cedula',
     ];
 
     protected $casts = [

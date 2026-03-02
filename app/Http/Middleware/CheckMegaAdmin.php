@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Middleware;
-
+     
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +17,7 @@ class CheckMegaAdmin
         if (!$user || ($user['role'] ?? '') !== 'mega_admin') {
             abort(403, 'Solo Mega Admin puede acceder a esta sección.');
         }
-
+        
         return $next($request);
     }
 }

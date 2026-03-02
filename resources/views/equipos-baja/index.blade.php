@@ -39,6 +39,18 @@
             </select>
             <span class="text-sm text-slate-500">por página</span>
         </form>
+        
+        {{-- Botón de exportar --}}
+        <div class="flex items-center gap-3">
+            <a href="{{ route('equipos-baja.exportar-pdf', request()->query()) }}" 
+               target="_blank"
+               class="inline-flex items-center px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2v-4a2 2 0 012-2h6l2 2z"/>
+                </svg>
+                Exportar Formato
+            </a>
+        </div>
     </div>
 
     {{-- Tabla de equipos de baja --}}
@@ -62,8 +74,11 @@
                         <th class="text-left py-4 px-6 font-semibold text-slate-400 uppercase tracking-wider text-xs">
                             Acta No.
                         </th>
-                        <th class="text-right py-4 px-6 font-semibold text-slate-400 uppercase tracking-wider text-xs w-32">
-                            Acciones
+                        <th class="text-left py-4 px-6 font-semibold text-slate-400 uppercase tracking-wider text-xs">
+                            Formato
+                        </th>
+                        <th class="text-left py-4 px-6 font-semibold text-slate-400 uppercase tracking-wider text-xs">
+                            Hoja de Vida
                         </th>
                     </tr>
                 </thead>
@@ -85,20 +100,6 @@
                             </td>
                             <td class="py-4 px-6 text-slate-300">
                                 {{ $baja->acta_numero ?? 'N/A' }}
-                            </td>
-                            <td class="py-4 px-6 text-right">
-                                @if($baja->acta_pdf)
-                                <a href="{{ route('equipos-baja.download', $baja) }}" 
-                                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600/90 hover:bg-indigo-500 text-white shadow-sm transition"
-                                   target="_blank">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
-                                    <span>Descargar</span>
-                                </a>
-                                @else
-                                <span class="text-xs text-slate-500">Sin PDF</span>
-                                @endif
                             </td>
                         </tr>
                     @empty
@@ -122,3 +123,17 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+function exportarFormatoBaja(bajaId) {
+    const url = `/equipos-baja/${bajaId}/formato-html`;
+    window.open(url, '_blank');
+}
+
+function exportarHojaVida(equipoId) {
+    const url = `/equipos/${equipoId}/hoja-vida`;
+    window.open(url, '_blank');
+}
+</script>
+@endpush

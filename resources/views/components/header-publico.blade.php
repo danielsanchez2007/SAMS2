@@ -6,6 +6,7 @@
     $logoMain = \Illuminate\Support\Facades\Cache::get(
         config('temas_sistema.logo_main_cache_key', 'sistema_logo_principal')
     );
+    
     $configLogin = \Illuminate\Support\Facades\Cache::get('sistema_config_login', [
         'texto_boton_login' => 'Iniciar Sesión2',
     ]);
@@ -21,7 +22,7 @@
                             : asset($logoMain))
                         : asset('img/logos/logoSams.png');
                 @endphp
-                <img src="{{ $logoUrl }}" alt="{{ config('app.name') }}" class="h-12 w-auto object-contain" onerror="this.onerror=null; this.src='{{ asset('img/logos/logoSams.png') }}';">
+                <img src="{{ $logoUrl }}" alt="{{ config('app.name') }}" class="h-16 lg:h-20 w-auto object-contain" onerror="this.onerror=null; this.src='{{ asset('img/logos/logoSams.png') }}';">
                 @php
                     $encabezado = \Illuminate\Support\Facades\Cache::get('sistema_encabezado', [
                         'texto_nombre_empresa' => config('app.name'),
@@ -32,7 +33,7 @@
             <div class="flex items-center gap-4">
                 <a href="{{ route('login') }}" class="px-6 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold transition-all duration-200">
                     {{ $configLogin['texto_boton_login'] ?? 'Iniciar Sesión' }}
-                </a>
+                </a>                    
             </div>
         </div>
     </div>

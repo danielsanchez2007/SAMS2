@@ -234,9 +234,11 @@
                                     <button type="button" @click="openVer({{ $e->id }}, '{{ addslashes($e->codigo) }}', '{{ addslashes(Str::limit($e->descripcion, 40)) }}')" class="p-1.5 sm:p-2.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/30 rounded-lg transition-colors" title="Ver imágenes y archivos">
                                         <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     </button>
+                                    @if(($tab ?? 'equipos') !== 'debaja')
                                     <button type="button" @click="abrirModalAlmacenHojasVida({{ $e->id }}, '{{ addslashes($e->codigo) }}')" class="col-span-2 row-span-2 p-2.5 sm:p-3.5 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/30 rounded-lg transition-colors relative flex items-center justify-center" title="Almacén de hojas de vida" style="min-height: 4rem;">
                                         <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                                     </button>
+                                    @endif
                                     @php
                                         $tienePdfAsignado = $e->tipoEquipo && \App\Models\AlmacenArchivo::where('tipo_equipo_id', $e->tipo_equipo_id)
                                             ->whereHas('etiqueta', function($q) {
@@ -244,26 +246,27 @@
                                             })
                                             ->exists();
                                     @endphp
-                                    @if($tienePdfAsignado)
-                                    <button type="button" @click="abrirHojaVidaPlantillaModal({{ $e->id }}, '{{ $e->codigo }}')" class="p-1.5 sm:p-2.5 tema-gradient tema-gradient-hover text-white hover:opacity-90 rounded-lg transition-colors" title="Exportar PDF con información del equipo">
-                                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    </button>
-                                    @elseif($e->tipoEquipo && $e->tipoEquipo->tieneFormato())
-                                    <button type="button"
-                                            @click="openInspeccionFormatoModal({{ $e->tipo_equipo_id ?? 'null' }}, '{{ addslashes($e->tipoEquipo->nombre ?? '') }}', '{{ addslashes($e->codigo) }}')"
-                                            class="p-1.5 sm:p-2.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 rounded-lg transition-colors"
-                                            title="Rellenar formato de inspección">
-                                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                        </svg>
-                                    </button>
-                                    @endif
-                                    @if(($tab ?? 'equipos') === 'equipos')
-                                    <button type="button" @click="abrirModalTraspaso({{ json_encode($e) }})" class="p-1.5 sm:p-2.5 text-purple-400 hover:text-purple-300 hover:bg-purple-950/30 rounded-lg transition-colors" title="Traspasar">
-                                        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                                    </button>
-                                    @endif
-                                    <button type="button" @click="editEquipo({{ json_encode([
+                                    @if(($tab ?? 'equipos') !== 'debaja')
+                                        @if($tienePdfAsignado)
+                                        <button type="button" @click="abrirHojaVidaPlantillaModal({{ $e->id }}, '{{ $e->codigo }}')" class="p-1.5 sm:p-2.5 tema-gradient tema-gradient-hover text-white hover:opacity-90 rounded-lg transition-colors" title="Exportar PDF con información del equipo">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        </button>
+                                        @elseif($e->tipoEquipo && $e->tipoEquipo->tieneFormato())
+                                        <button type="button"
+                                                @click="openInspeccionFormatoModal({{ $e->tipo_equipo_id ?? 'null' }}, '{{ addslashes($e->tipoEquipo->nombre ?? '') }}', '{{ addslashes($e->codigo) }}')"
+                                                class="p-1.5 sm:p-2.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30 rounded-lg transition-colors"
+                                                title="Rellenar formato de inspección">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </button>
+                                        @endif
+                                        @if(($tab ?? 'equipos') === 'equipos')
+                                        <button type="button" @click="abrirModalTraspaso({{ json_encode($e) }})" class="p-1.5 sm:p-2.5 text-purple-400 hover:text-purple-300 hover:bg-purple-950/30 rounded-lg transition-colors" title="Traspasar">
+                                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                        </button>
+                                        @endif
+                                        <button type="button" @click="editEquipo({{ json_encode([
                                         'id' => $e->id,
                                         'empresa_id' => $e->empresa_id,
                                         'tipo_item_id' => $e->tipo_item_id,
@@ -298,9 +301,27 @@
                                         'tiene_imagen_etiqueta' => $e->tiene_imagen_etiqueta,
                                         'imagen_general' => $e->imagen_general,
                                         'imagen_etiqueta' => $e->imagen_etiqueta,
-                                    ]) }})" class="p-1.5 sm:p-2.5 text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 rounded-lg transition-colors" title="Editar">
+                                    ]) }})" @if(($tab ?? 'equipos') !== 'debaja') class="p-1.5 sm:p-2.5 text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 rounded-lg transition-colors" title="Editar">
                                         <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                     </button>
+                                    @endif
+                                    @if(($tab ?? 'equipos') === 'debaja')
+                                        {{-- Botones para equipos de baja --}}
+                                        <div class="flex gap-1">
+                                            <button onclick="exportarFormatoBaja({{ $e->id }})" 
+                                                    class="p-1.5 sm:p-2.5 text-blue-400 hover:text-blue-300 hover:bg-blue-950/30 rounded-lg transition-colors" title="Formato de Baja">
+                                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2v-4a2 2 0 012-2h6l2 2z"/>
+                                                </svg>
+                                            </button>
+                                            <button onclick="exportarHojaVida({{ $e->id }})" 
+                                                    class="p-1.5 sm:p-2.5 text-green-400 hover:text-green-300 hover:bg-green-950/30 rounded-lg transition-colors" title="Hoja de Vida">
+                                                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    @endif
                                     @if(($tab ?? 'equipos') !== 'debaja')
                                         <form action="{{ route('equipos.destroy', $e) }}" method="POST" class="inline" onsubmit="return confirm('¿Eliminar este equipo?');">
                                             @csrf @method('DELETE')
@@ -308,6 +329,7 @@
                                                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                             </button>
                                         </form>
+                                    @endif
                                     @endif
                                 </div>
                             </td>
@@ -614,6 +636,24 @@
         </div>
     </div>
 
+    {{-- Modal Formatos de Hojas de Vida --}}
+    <div x-show="showFormatosHojasVidaModal" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 overflow-y-auto">
+        <div class="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl my-8 border border-slate-700/60 flex flex-col max-h-[90vh]" @click.stop>
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-700/60 flex-shrink-0">
+                <h3 class="text-lg font-semibold text-slate-200">Formatos de Hojas de Vida</h3>
+                <button type="button" @click="showFormatosHojasVidaModal = false" class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors" title="Cerrar">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <p class="px-5 pt-3 pb-1 text-sm text-slate-400" x-show="formatosHojasVidaCodigo" x-text="'Equipo: ' + formatosHojasVidaCodigo"></p>
+            <div class="p-4 flex-1 min-h-0 overflow-hidden">
+                <template x-if="showFormatosHojasVidaModal && formatosHojasVidaEquipoId">
+                    <iframe :src="'{{ url('/equipos') }}/' + formatosHojasVidaEquipoId + '/formatos-hojas-vida'" class="w-full h-[70vh] min-h-[400px] rounded-lg border border-slate-700/60 bg-white" title="Formatos de Hojas de Vida"></iframe>
+                </template>
+            </div>
+        </div>
+    </div>
+
     {{-- Modal Almacén de Hojas de Vida --}}
     <div x-show="showModalAlmacenHojasVida" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black" @click.self="showModalAlmacenHojasVida = false">
         <div class="bg-slate-900 rounded-xl shadow-2xl max-w-sm w-full p-6 text-white border border-slate-700" @click.stop>
@@ -637,9 +677,9 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                     <span>Importar</span>
                 </button>
-                <button type="button" @click="verPdfsAlmacen()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition">
+                <button type="button" @click="verFormatosHojasVida()" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium transition">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    <span>PDFs</span>
+                    <span>Formatos de Hojas de Vida</span>
                 </button>
             </div>
         </div>
@@ -1149,11 +1189,11 @@
                             </button>
                         </template>
                         <button type="button" 
-                                @click="reasignandoPdf ? cancelarReasignacion() : (showModalAsignarPdf = false; pdfSeleccionado = null; tipoEquipoSeleccionado = ''; equiposAsignados = []; tipoEquipoAsignado = null;)"
+                                @click="cerrarModalAsignarPdf()"
                                 class="px-6 py-3 rounded-lg border-2 text-white text-sm font-semibold transition shadow"
                                 style="border-color: var(--tema-primary); color: var(--tema-primary-text);"
                                 onmouseover="this.style.backgroundColor='var(--tema-primary-light)';"
-                                onmouseout="this.style.backgroundColor='transparent';">
+                                onmouseout="this.style.backgroundColor='transparent';">>
                             <span x-show="reasignandoPdf">Cancelar</span>
                             <span x-show="!reasignandoPdf">Cerrar</span>
                         </button>
@@ -1236,12 +1276,20 @@
                     <p class="text-sm text-slate-400 mb-4">
                         Equipo: <span class="text-slate-200 font-medium" x-text="equipoTraspaso.codigo"></span>
                     </p>
-                    <form method="POST" :action="'{{ url('/equipos') }}/' + equipoTraspaso.id + '/traspasar'" @submit="mostrarModalTraspaso = false">
+                    <form method="POST" :action="'{{ url('/equipos') }}/' + equipoTraspaso.id + '/traspasar'" @submit.prevent="validarYAbrirInspección">
                         @csrf
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-400 mb-2">Destino *</label>
-                                <select name="destino" x-model="traspasoForm.destino" @change="cargarCodigosDisponiblesTraspaso()" required
+                                <select name="destino" x-model="traspasoForm.destino" @change="
+                                cargarCodigosDisponiblesTraspaso();
+                                if ($event.target.value === 'equipos_debaja') {
+                                    setTimeout(() => {
+                                        mostrarModalTraspaso = false;
+                                        mostrarFormularioInspeccionTraspaso = true;
+                                    }, 100);
+                                }
+                            " required
                                         class="w-full px-4 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100">
                                     <option value="">-- Seleccione --</option>
                                     <option value="equipos_debaja">Equipos de baja (DB)</option>
@@ -1251,7 +1299,7 @@
                             </div>
                             
                             <div x-show="traspasoForm.destino">
-                                <label class="block text-sm font-medium text-slate-400 mb-2">Número del código *</label>
+                                <label class="block text-sm font-medium text-slate-400 mb-2">Código asignado automáticamente *</label>
                                 <div class="flex items-center gap-2">
                                     <span class="px-3 py-2 rounded-lg bg-slate-700 text-slate-200 font-mono text-lg font-semibold" x-text="
                                         traspasoForm.destino === 'equipos_debaja' ? 'DB' :
@@ -1259,10 +1307,10 @@
                                         traspasoForm.destino === 'auditoria' ? 'AU' : ''
                                     "></span>
                                     <input type="number" name="numero_codigo" x-model="traspasoForm.numero_codigo" required min="1"
-                                           class="flex-1 px-4 py-2 rounded-lg border border-slate-600 bg-slate-800 text-slate-100"
-                                           placeholder="Ej: 1, 2, 3...">
+                                           class="flex-1 px-4 py-2 rounded-lg border border-slate-600 bg-slate-700 text-slate-200 font-mono text-lg font-semibold"
+                                           readonly>
                                 </div>
-                                <p class="text-xs text-slate-500 mt-1">Ingrese solo el número. El prefijo (MD, AU) se agregará automáticamente.</p>
+                                <p class="text-xs text-slate-400 mt-1">✓ Código auto-asignado. Se incrementa automáticamente según el tipo de destino.</p>
                                 
                                 <!-- Códigos disponibles -->
                                 <div x-show="codigosDisponiblesTraspaso.length > 0" class="mt-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
@@ -1301,8 +1349,8 @@
                             </div>
                         </div>
                         <div class="mt-6 flex gap-3">
-                            <button type="submit" class="flex-1 px-6 py-3 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 transition">
-                                Traspasar
+                            <button type="submit" class="flex-1 px-6 py-3 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed" :disabled="!traspasoForm.destino || !traspasoForm.numero_codigo">
+                                Continuar → Inspección
                             </button>
                             <button type="button" @click="mostrarModalTraspaso = false" class="px-6 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-800 transition">
                                 Cancelar
@@ -1311,6 +1359,105 @@
                     </form>
                 </div>
             </template>
+        </div>
+    </div>
+
+    {{-- Modal Simple para Baja de Equipos --}}
+    <div x-show="mostrarFormularioInspeccionTraspaso" x-cloak 
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 overflow-y-auto"
+         >
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6" @click.stop>
+            <!-- Encabezado -->
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-gray-900">Dar de Baja Equipo</h2>
+                <button type="button" @click="mostrarFormularioInspeccionTraspaso = false" 
+                        class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Información del equipo -->
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h3 class="font-semibold text-gray-900 mb-2">Equipo a dar de baja:</h3>
+                <p class="text-sm text-gray-700">
+                    <strong>Código:</strong> <span x-text="equipoTraspaso?.codigo || ''"></span><br>
+                    <strong>Descripción:</strong> <span x-text="equipoTraspaso?.descripcion || ''"></span>
+                </p>
+            </div>
+
+            <!-- Formulario -->
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de baja *</label>
+                        <input type="date" x-model="formularioInspeccion.fecha_inspeccion" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Acta No.</label>
+                        <input type="text" :value="formularioInspeccion.acta_numero || 'Cargando...'" readonly
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Motivo de baja *</label>
+                    <textarea x-model="formularioInspeccion.motivo_baja" 
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              rows="3" placeholder="Describa el motivo de la baja..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Responsable</label>
+                        <input type="text" x-model="formularioInspeccion.responsable_nombre" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Nombre completo">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
+                        <input type="text" x-model="formularioInspeccion.responsable_cedula" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Número de cédula">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Gerente</label>
+                        <input type="text" x-model="formularioInspeccion.gerente_nombre" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Nombre completo">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cédula</label>
+                        <input type="text" x-model="formularioInspeccion.gerente_cedula" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="Número de cédula">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nota importante -->
+            <div class="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                <p class="text-sm text-yellow-800">
+                    <strong>Nota importante:</strong> Al confirmar, el equipo pasará a "Equipos de baja" y será removido del inventario disponible. El código será liberado para reutilizar.
+                </p>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex gap-3 justify-end mt-6">
+                <button type="button" @click="mostrarFormularioInspeccionTraspaso = false" 
+                        class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                    Cancelar
+                </button>
+                <button type="button" @click="guardarInspeccionYTraspasar()" 
+                        class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                    Confirmar Baja
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1403,12 +1550,27 @@ function equiposApp() {
         showModal: false,
         showExportModal: false,
         mostrarModalTraspaso: false,
+        mostrarFormularioInspeccionTraspaso: false,
         equipoTraspaso: null,
         ultimoEquipoTraspasado: null,
         codigosDisponiblesTraspaso: [],
         traspasoForm: {
             destino: '',
             numero_codigo: ''
+        },
+        formularioInspeccion: {
+            fecha_inspeccion: '',
+            motivo_baja: '',
+            responsable_nombre: '',
+            responsable_cedula: '',
+            responsable_cargo: '',
+            gerente_nombre: '',
+            gerente_cedula: '',
+            gerente_cargo: '',
+            serial: '',
+            estado: '',
+            destino_final: '',
+            acta_numero: ''
         },
         mostrarCodigosDisponibles: false,
         codigosDisponibles: [],
@@ -1451,6 +1613,10 @@ function equiposApp() {
         inspeccionTipoEquipoId: null,
         inspeccionTipoNombre: '',
         inspeccionEquipoCodigo: '',
+        // Modal para formatos de hojas de vida
+        showFormatosHojasVidaModal: false,
+        formatosHojasVidaEquipoId: null,
+        formatosHojasVidaCodigo: '',
         showHojaVidaPlantillaModal: false,
         hojaVidaPlantillaEquipoId: null,
         hojaVidaPlantillaCodigo: '',
@@ -1553,6 +1719,8 @@ function equiposApp() {
             imagen_general: null,
             imagen_etiqueta: null,
         },
+        previewImagenGeneral: null,
+        previewImagenEtiqueta: null,
         bodegasModal: @json($bodegas ?? []),
         kitItems: [],
         exportEmpresaId: '',
@@ -2162,6 +2330,17 @@ function equiposApp() {
             this.pdfSeleccionado = null;
             this.tipoEquipoSeleccionado = '';
         },
+        cerrarModalAsignarPdf() {
+            if (this.reasignandoPdf) {
+                this.cancelarReasignacion();
+            } else {
+                this.showModalAsignarPdf = false;
+                this.pdfSeleccionado = null;
+                this.tipoEquipoSeleccionado = '';
+                this.equiposAsignados = [];
+                this.tipoEquipoAsignado = null;
+            }
+        },
         async reasignarPdf() {
             if (!this.pdfActualReasignacion || !this.pdfSeleccionado || !this.tipoEquipoReasignacion) {
                 alert('Por favor, selecciona un PDF para reasignar.');
@@ -2484,6 +2663,8 @@ function equiposApp() {
                 tiene_manual_fabricante: false, tiene_certificacion: false,
                 tiene_imagen_general: false, tiene_imagen_etiqueta: false, imagen_general: null, imagen_etiqueta: null,
             };
+            this.previewImagenGeneral = null;
+            this.previewImagenEtiqueta = null;
             this.bodegasModal = this.todasLasBodegas;
             this.sedesModal = this.todasLasSedes;
             this.kitItems = [];
@@ -2680,6 +2861,8 @@ function equiposApp() {
                 tiene_imagen_etiqueta: e.tiene_imagen_etiqueta, imagen_general: e.imagen_general || null,
                 imagen_etiqueta: e.imagen_etiqueta || null,
             };
+            this.previewImagenGeneral = null;
+            this.previewImagenEtiqueta = null;
             
             // Guardar los valores de sede y bodega antes de cargar las opciones
             const sedeIdGuardado = this.form.sede_id;
@@ -2817,6 +3000,20 @@ function equiposApp() {
             this.inspeccionEquipoCodigo = codigoEquipo || '';
             this.showInspeccionFormatoModal = true;
         },
+        verFormatosHojasVida() {
+            if (!this.almacenHojasVidaEquipoId) {
+                alert('No hay equipo seleccionado.');
+                return;
+            }
+
+            // Cerrar modal actual y abrir modal de formatos de hojas de vida
+            this.showModalAlmacenHojasVida = false;
+            
+            // Abrir modal similar al de inspección pero para hojas de vida
+            this.showFormatosHojasVidaModal = true;
+            this.formatosHojasVidaEquipoId = this.almacenHojasVidaEquipoId;
+            this.formatosHojasVidaCodigo = this.almacenHojasVidaCodigo;
+        },
         async cargarBodegasModal(preservarValores = false) {
             const bodegaIdActual = preservarValores ? this.form.bodega_id : '';
             
@@ -2893,35 +3090,248 @@ function equiposApp() {
         },
         async abrirModalTraspaso(equipo) {
             this.equipoTraspaso = equipo;
+            
+            // Directamente abrir el modal de inspección
+            // Pre-configurar destino como equipos_debaja
             this.traspasoForm = {
-                destino: '',
+                destino: 'equipos_debaja',
                 numero_codigo: ''
             };
-            this.ultimoEquipoTraspasado = null;
-            this.codigosDisponiblesTraspaso = [];
-            this.mostrarModalTraspaso = true;
             
-            // Cargar el último destino usado para este equipo
+            // Cargar el código disponible
             if (this.filtros.empresa_id && equipo.id) {
                 try {
-                    const url = '{{ route('equipos.ultimo-traspasado') }}?empresa_id=' + this.filtros.empresa_id + '&equipo_id=' + equipo.id;
+                    const url = '{{ route('equipos.ultimo-traspasado') }}?empresa_id=' + this.filtros.empresa_id + '&destino=equipos_debaja&equipo_id=' + equipo.id;
                     const res = await fetch(url, {
                         headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     const data = await res.json();
-                    if (data.ultimo_equipo && data.ultimo_equipo.destino) {
-                        this.traspasoForm.destino = data.ultimo_equipo.destino;
-                        this.ultimoEquipoTraspasado = data.ultimo_equipo;
-                        // Cargar códigos disponibles para ese destino
-                        await this.cargarCodigosDisponiblesTraspaso();
+                    
+                    // Obtener el código DB
+                    if (data.codigos_disponibles && data.codigos_disponibles.length > 0) {
+                        const codigo = data.codigos_disponibles[0].codigo;
+                        const numeroSinPrefijo = codigo.replace(/^DB/, '');
+                        this.traspasoForm.numero_codigo = parseInt(numeroSinPrefijo) || 1;
+                    } else {
+                        this.traspasoForm.numero_codigo = 1;
                     }
+                    
+                    // Pre-llenar el formulario de inspección con la fecha de hoy
+                    this.formularioInspeccion = {
+                        fecha_inspeccion: new Date().toISOString().split('T')[0],
+                        motivo_baja: '',
+                        responsable_nombre: '',
+                        responsable_cedula: '',
+                        responsable_cargo: '',
+                        gerente_nombre: '',
+                        gerente_cedula: '',
+                        gerente_cargo: '',
+                        serial: '',
+                        estado: '',
+                        destino_final: '',
+                        acta_numero: '' // Se cargará automáticamente
+                    };
+                    
+                    // Cargar el próximo número de acta
+                    this.cargarProximaActa();
+                    
+                    // Mostrar directamente el modal de inspección
+                    this.mostrarFormularioInspeccionTraspaso = true;
                 } catch (e) {
-                    console.error('Error al cargar último destino:', e);
+                    console.error('Error al cargar código:', e);
+                    this.traspasoForm.numero_codigo = 1;
+                    this.formularioInspeccion = {
+                        fecha_inspeccion: new Date().toISOString().split('T')[0],
+                        motivo_baja: '',
+                        responsable_nombre: '',
+                        responsable_cedula: '',
+                        responsable_cargo: '',
+                        gerente_nombre: '',
+                        gerente_cedula: '',
+                        gerente_cargo: '',
+                        serial: '',
+                        estado: '',
+                        destino_final: '',
+                        acta_numero: '' // Se cargará automáticamente
+                    };
+                    
+                    // Cargar el próximo número de acta
+                    this.cargarProximaActa();
+                    this.mostrarFormularioInspeccionTraspaso = true;
                 }
+            } else {
+                this.traspasoForm.numero_codigo = 1;
+                this.formularioInspeccion = {
+                    fecha_inspeccion: new Date().toISOString().split('T')[0],
+                    motivo_baja: '',
+                    responsable_nombre: '',
+                    responsable_cedula: '',
+                    responsable_cargo: '',
+                    gerente_nombre: '',
+                    gerente_cedula: '',
+                    gerente_cargo: '',
+                    serial: '',
+                    estado: '',
+                    destino_final: '',
+                    acta_numero: '' // Se cargará automáticamente
+                };
+                
+                // Cargar el próximo número de acta
+                this.cargarProximaActa();
+                this.mostrarFormularioInspeccionTraspaso = true;
+            }
+        },
+        autoAsignarCodigo() {
+            console.log('=== autoAsignarCodigo ===');
+            console.log('traspasoForm.destino:', this.traspasoForm.destino);
+            console.log('codigosDisponiblesTraspaso length:', this.codigosDisponiblesTraspaso?.length);
+            
+            if (!this.traspasoForm.destino) {
+                console.log('No hay destino seleccionado');
+                return;
+            }
+            
+            if (!this.codigosDisponiblesTraspaso || this.codigosDisponiblesTraspaso.length === 0) {
+                console.log('No hay códigos disponibles o array es vacío');
+                console.log('array:', this.codigosDisponiblesTraspaso);
+                // No hacer nada - mantener campo vacío si no hay códigos
+                return;
+            }
+            
+            // Tomar el primer código disponible
+            const codigo = this.codigosDisponiblesTraspaso[0];
+            console.log('Primer código disponible:', codigo);
+            
+            const proximoCodigo = codigo.codigo;
+            // Extraer solo el número (sin prefijo DB, MD, AU)
+            const numeroSinPrefijo = proximoCodigo.replace(/^(DB|MD|AU)/, '');
+            const numeroFinal = parseInt(numeroSinPrefijo) || 1;
+            
+            this.traspasoForm.numero_codigo = numeroFinal;
+            
+            console.log('Código asignado:', {
+                proximoCodigo,
+                numeroSinPrefijo,
+                numeroFinal,
+                traspasoForm_numero_codigo: this.traspasoForm.numero_codigo
+            });
+        },
+        async cargarProximaActa() {
+            console.log('Iniciando cargarProximaActa...');
+            try {
+                const url = `{{ url('/equipos-baja/proxima-acta') }}`;
+                console.log('URL:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Data recibida:', data);
+                    this.formularioInspeccion.acta_numero = data.proxima_acta;
+                    console.log('Acta número asignado:', this.formularioInspeccion.acta_numero);
+                } else {
+                    console.error('Error al cargar próxima acta - Status:', response.status);
+                    this.formularioInspeccion.acta_numero = 'Error';
+                }
+            } catch (error) {
+                console.error('Error en cargarProximaActa:', error);
+                this.formularioInspeccion.acta_numero = 'Error';
+            }
+        },
+        async validarYAbrirInspección(e) {
+            e.preventDefault();
+            if (!this.traspasoForm.destino || !this.traspasoForm.numero_codigo) {
+                alert('Por favor completa todos los campos requeridos.');
+                return;
+            }
+            if (this.traspasoForm.destino !== 'equipos_debaja') {
+                // Si no es equipos de baja, proceder con el traspaso normal
+                document.querySelector('form[action*="/traspasar"]').submit();
+                return;
+            }
+            // Si es equipos de baja, abrir formulario de inspección primero
+            this.mostrarModalTraspaso = false;
+            this.mostrarFormularioInspeccionTraspaso = true;
+        },
+        async guardarInspeccionYTraspasar() {
+            // Validar que los campos requeridos estén llenos
+            if (!this.formularioInspeccion.fecha_inspeccion) {
+                alert('Por favor completa la fecha de inspección.');
+                return;
+            }
+            
+            if (!this.traspasoForm.numero_codigo || this.traspasoForm.numero_codigo <= 0) {
+                alert('Error: El código no se pudo asignar correctamente. Por favor recarga la página e intenta de nuevo.');
+                console.error('numero_codigo es inválido:', this.traspasoForm.numero_codigo);
+                return;
+            }
+            
+            try {
+                console.log('Enviando datos:', {
+                    destino: this.traspasoForm.destino,
+                    numero_codigo: this.traspasoForm.numero_codigo,
+                    fecha_inspeccion: this.formularioInspeccion.fecha_inspeccion,
+                    equipoId: this.equipoTraspaso.id
+                });
+                
+                // Crear FormData para enviar los datos
+                const formData = new FormData();
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('equipo_id', this.equipoTraspaso.id);
+                formData.append('fecha_baja', this.formularioInspeccion.fecha_inspeccion);
+                formData.append('resumen_baja', this.formularioInspeccion.motivo_baja || '');
+                formData.append('responsable_inventario_nombre', this.formularioInspeccion.responsable_nombre || '');
+                formData.append('responsable_inventario_cc', this.formularioInspeccion.responsable_cedula || '');
+                formData.append('gerente_administrativa_nombre', this.formularioInspeccion.gerente_nombre || '');
+                formData.append('gerente_administrativa_cc', this.formularioInspeccion.gerente_cedula || '');
+                
+                // Agregar datos adicionales del formulario
+                formData.append('serial', this.formularioInspeccion.serial || '');
+                formData.append('estado', this.formularioInspeccion.estado || '');
+                formData.append('destino_final', this.formularioInspeccion.destino_final || '');
+                formData.append('responsable_cargo', this.formularioInspeccion.responsable_cargo || '');
+                formData.append('gerente_cargo', this.formularioInspeccion.gerente_cargo || '');
+                
+                // Enviar directamente al endpoint de equipos-baja
+                const res = await fetch(`{{ url('/equipos-baja') }}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                const data = await res.json();
+                console.log('Respuesta del servidor:', data);
+                
+                if (data.success) {
+                    alert('✓ Equipo dado de baja correctamente.');
+                    this.mostrarFormularioInspeccionTraspaso = false;
+                    // Recargar la página
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo dar de baja el equipo'));
+                    console.error('Error del servidor:', data);
+                }
+            } catch (e) {
+                console.error('Error:', e);
+                alert('Error al dar de baja: ' + e.message);
             }
         },
         async cargarUltimoEquipoTraspasado() {
+            console.log('=== cargarUltimoEquipoTraspasado ===');
             if (!this.traspasoForm.destino || !this.filtros.empresa_id) {
+                console.log('Faltando destino o empresa_id');
                 this.ultimoEquipoTraspasado = null;
                 this.codigosDisponiblesTraspaso = [];
                 return;
@@ -2929,13 +3339,22 @@ function equiposApp() {
             
             try {
                 const equipoId = this.equipoTraspaso?.id || '';
-                const url = '{{ route('equipos.ultimo-traspasado') }}?empresa_id=' + this.filtros.empresa_id + '&destino=' + this.traspasoForm.destino + (equipoId ? '&equipo_id=' + equipoId : '');
+                const destino = this.traspasoForm.destino;
+                const empresaId = this.filtros.empresa_id;
+                const url = '{{ route('equipos.ultimo-traspasado') }}?empresa_id=' + empresaId + '&destino=' + destino + (equipoId ? '&equipo_id=' + equipoId : '');
+                
+                console.log('Llamando a URL:', url);
                 const res = await fetch(url, {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const data = await res.json();
+                console.log('Respuesta del servidor:', data);
+                
                 this.ultimoEquipoTraspasado = data.ultimo_equipo || null;
                 this.codigosDisponiblesTraspaso = data.codigos_disponibles || [];
+                
+                console.log('ultimoEquipoTraspasado:', this.ultimoEquipoTraspasado);
+                console.log('codigosDisponiblesTraspaso:', this.codigosDisponiblesTraspaso);
             } catch (e) {
                 console.error('Error al cargar último equipo traspasado:', e);
                 this.ultimoEquipoTraspasado = null;
@@ -2943,11 +3362,26 @@ function equiposApp() {
             }
         },
         async cargarCodigosDisponiblesTraspaso() {
+            console.log('=== Iniciando cargarCodigosDisponiblesTraspaso ===');
+            console.log('traspasoForm.destino:', this.traspasoForm.destino);
+            console.log('filtros.empresa_id:', this.filtros.empresa_id);
+            
             if (!this.traspasoForm.destino || !this.filtros.empresa_id) {
+                console.log('Faltando destino o empresa_id');
                 this.codigosDisponiblesTraspaso = [];
+                this.traspasoForm.numero_codigo = '';
                 return;
             }
+            
+            console.log('Llamando a cargarUltimoEquipoTraspasado...');
             await this.cargarUltimoEquipoTraspasado();
+            console.log('Códigos cargados:', this.codigosDisponiblesTraspaso);
+            
+            // Auto-asignar código después de cargar
+            console.log('Esperando 50ms antes de autoAsignarCodigo...');
+            await new Promise(resolve => setTimeout(resolve, 50));
+            console.log('Llamando autoAsignarCodigo...');
+            this.autoAsignarCodigo();
         },
         async cargarCodigosDisponibles() {
             this.codigosCargando = true;
@@ -3344,6 +3778,57 @@ function equiposApp() {
                 }
             }
         },
+        // Variables faltantes para PDFs
+        showModalTodosPdfs: false,
+        equiposAsignados: [],
+        tipoEquipoAsignado: null,
+        // Variables para modal de hoja de vida pasada
+        mostrarModalHojaVidaPasada: false,
+        equipoIdHojaVida: null,
+        hojaVidaPasada: null,
+        // Funciones para exportar en equipos de baja
+        exportarFormatoBaja(equipoId) {
+            // Para equipos de baja, necesitamos buscar el registro EquipoBaja correspondiente
+            fetch(`/equipos-baja/buscar-por-equipo/${equipoId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.equipoBaja) {
+                        const url = `/equipos-baja/${data.equipoBaja.id}/formato-html`;
+                        window.open(url, '_blank');
+                    } else {
+                        alert('No se encontró el formato de baja para este equipo');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al buscar el formato de baja');
+                });
+        },
+        exportarHojaVida(equipoId) {
+            this.equipoIdHojaVida = equipoId;
+            this.mostrarModalHojaVidaPasada = true;
+            this.cargarHojaVidaPasada(equipoId);
+        },
+        cargarHojaVidaPasada(equipoId) {
+            fetch(`/equipos/${equipoId}/hoja-vida-pasada`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.hojaVidaPasada = data.hojaVida;
+                    } else {
+                        this.hojaVidaPasada = null;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    this.hojaVidaPasada = null;
+                });
+        },
+        descargarHojaVidaPasada() {
+            if (this.equipoIdHojaVida) {
+                window.open(`/equipos/${this.equipoIdHojaVida}/hoja-vida-pasada-descargar`, '_blank');
+            }
+        },
         init() {
             // Cargar sedes y bodegas filtradas al inicio si hay empresa/sede seleccionada
             if (this.filtros.empresa_id) {
@@ -3357,3 +3842,55 @@ function equiposApp() {
 }
 </script>
 @endsection
+{{-- Modal para Hoja de Vida Pasada --}}
+<div x-show="mostrarModalHojaVidaPasada" 
+     x-cloak
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+     style="display: none;">
+    <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-slate-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-semibold text-slate-900">Hoja de Vida Pasada</h3>
+                <button @click="mostrarModalHojaVidaPasada = false" 
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-6">
+            <template x-if="hojaVidaPasada">
+                <div class="prose max-w-none">
+                    <div x-html="hojaVidaPasada"></div>
+                </div>
+            </template>
+            <template x-if="!hojaVidaPasada">
+                <div class="text-center py-8">
+                    <div class="text-slate-500 mb-4">
+                        <svg class="w-16 h-16 mx-auto text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <p class="text-slate-600 text-lg">No se encontró hoja de vida pasada para este equipo</p>
+                </div>
+            </template>
+        </div>
+        
+        <div class="p-6 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+            <button @click="mostrarModalHojaVidaPasada = false" 
+                    class="px-4 py-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition-colors">
+                Cerrar
+            </button>
+            <button x-show="hojaVidaPasada" @click="descargarHojaVidaPasada()" 
+                    class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2v-4a2 2 0 012-2h6l2 2z"/>
+                </svg>
+                Descargar Hoja de Vida
+            </button>
+        </div>
+    </div>
+</div>
+

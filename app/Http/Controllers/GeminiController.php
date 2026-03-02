@@ -29,6 +29,29 @@ class GeminiController extends Controller
     }
 
     /**
+     * Detecta mensajes de API key inválida en diferentes formatos.
+     */
+    private function hasInvalidApiKeyError(?string $text): bool
+    {
+        $value = mb_strtolower(trim((string) $text), 'UTF-8');
+        if ($value === '') {
+            return false;
+        }
+
+        return str_contains($value, 'api key not valid')
+            || str_contains($value, 'invalid api key')
+            || str_contains($value, 'pass a valid api key')
+            || str_contains($value, 'api_key_invalid')
+            || str_contains($value, 'gemini_api_key')
+            || (str_contains($value, 'api key') && (
+                str_contains($value, 'not valid')
+                || str_contains($value, 'invalid')
+                || str_contains($value, 'no es válida')
+                || str_contains($value, 'no es valida')
+            ));
+    }
+
+    /**
      * Muestra la página de prueba de Gemini (opcional)
      *
      * @return View
@@ -194,18 +217,15 @@ class GeminiController extends Controller
             'mode' => 'nullable|string|in:full,sams',
         ]);
 
-        if (!$this->geminiService->isConfigured()) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Servicio no disponible.',
-            ], 503);
-        }
-
         try {
+            $requestedMode = $request->mode ?? 'sams';
+            $history = $request->history ?? [];
+            $message = $request->message;
+
             $result = $this->geminiService->chatWithContext(
-                $request->message,
-                $request->history ?? [],
-                $request->mode ?? 'sams'
+                $message,
+                $history,
+                $requestedMode
             );
 
             // Asegurar que siempre se devuelva un array con success
@@ -214,7 +234,22 @@ class GeminiController extends Controller
                 $result['error'] = $result['error'] ?? 'Error desconocido en el servicio.';
             }
 
-            return response()->json($result, $result['success'] ? 200 : 500);
+            // Sanitizar errores de API key sin forzar cambio de modo.
+            $invalidKeyDetected = $this->hasInvalidApiKeyError($result['error'] ?? null)
+                || $this->hasInvalidApiKeyError($result['message'] ?? null);
+
+            if ($invalidKeyDetected) {
+                if (($result['success'] ?? false) && $requestedMode === 'full') {
+                    $result['message'] = 'Modo Full activo con respaldo. No fue posible usar la API principal de Gemini en este momento.';
+                    $result['effective_mode'] = 'full';
+                } else {
+                    $result['error'] = 'La API Key de Gemini no es válida o no tiene permisos. Verifica GEMINI_API_KEY para usar Gemini en Modo Full.';
+                }
+            }
+
+            $statusCode = $result['success'] ? 200 : ($requestedMode === 'sams' ? 200 : 502);
+
+            return response()->json($result, $statusCode);
         } catch (\Exception $e) {
             \Log::error('GeminiController: Excepción no capturada', [
                 'error' => $e->getMessage(),
@@ -225,7 +260,7 @@ class GeminiController extends Controller
             
             return response()->json([
                 'success' => false,
-                'error' => 'Error interno del servidor: ' . $e->getMessage(),
+                'error' => 'Error interno del servidor.',
             ], 500);
         }
     }

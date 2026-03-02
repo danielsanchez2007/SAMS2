@@ -59,11 +59,26 @@ class GeminiService
      */
     public function __construct()
     {
-        $this->apiUrl = config('services.gemini.api_url');
-        $this->apiKey = config('services.gemini.api_key');
-        $this->model = config('services.gemini.model');
+        $this->apiUrl = rtrim(trim((string) config('services.gemini.api_url', '')), '/');
+        $this->apiKey = $this->normalizeApiKey((string) config('services.gemini.api_key', ''));
+        $this->model = trim((string) config('services.gemini.model', ''));
         $this->timeout = config('services.gemini.timeout', 30);
         $this->enabled = config('services.gemini.enabled', true);
+    }
+
+    /**
+     * Limpia formato de API key para evitar errores comunes de configuración.
+     */
+    private function normalizeApiKey(string $rawKey): string
+    {
+        $key = trim($rawKey);
+        $key = trim($key, "\"'`");
+
+        if (str_starts_with(mb_strtolower($key, 'UTF-8'), 'bearer ')) {
+            $key = trim(substr($key, 7));
+        }
+
+        return $key;
     }
 
     /**
@@ -441,6 +456,217 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
     }
 
     /**
+     * Respuestas rápidas para interacción básica en modo SAMS
+     * (saludos, ayuda y mensajes introductorios).
+     */
+    private function answerBasicSamsQuestion(string $normalizedMessage): ?string
+    {
+        $text = trim($normalizedMessage);
+
+        if ($text === '') {
+            return null;
+        }
+
+        if (preg_match('/^(hola|hi|hello|buenas|buenos dias|buenas tardes|buenas noches|hey|holi|que tal|qué tal)[\s!¡¿?.,]*$/u', $text)) {
+            return "¡Hola! Soy el asistente de SAMS2.\nPuedo ayudarte con usuarios, equipos, roles, inventario y reportes.\n\nEjemplos:\n• ¿Cuántos equipos hay?\n• ¿Hay usuarios duplicados?\n• Buscar usuario con cédula 123456789";
+        }
+
+        if (str_contains($text, 'ayuda')
+            || str_contains($text, 'que puedes hacer')
+            || str_contains($text, 'qué puedes hacer')
+            || str_contains($text, 'comandos')
+            || str_contains($text, 'como funciona')
+            || str_contains($text, 'cómo funciona')
+            || str_contains($text, 'como uso')
+            || str_contains($text, 'cómo uso')) {
+            return $this->buildSamsLocalFallbackMessage();
+        }
+
+        return null;
+    }
+
+    /**
+     * Mensaje de respaldo para mantener útil el chat SAMS
+     * cuando Gemini externo no responde.
+     */
+    private function buildSamsLocalFallbackMessage(?string $serviceError = null): string
+    {
+        $intro = $serviceError
+            ? "No pude completar esta consulta con Gemini en este momento, pero sigo disponible con datos de SAMS2."
+            : "Estoy disponible en modo SAMS con datos reales del sistema.";
+
+        return "{$intro}\n\nPrueba con:\n• ¿Cuántos usuarios/equipos/proveedores hay?\n• ¿Qué acceso tiene el rol Administrador?\n• Buscar usuario con cédula 123456789\n• Revisar usuarios con nombres duplicados o parecidos";
+    }
+
+    /**
+     * Extrae el primer texto útil desde los RelatedTopics de DuckDuckGo.
+     */
+    private function extractFirstRelatedTopicText(array $topics): string
+    {
+        foreach ($topics as $topic) {
+            if (!is_array($topic)) {
+                continue;
+            }
+
+            $text = trim((string) ($topic['Text'] ?? ''));
+            if ($text !== '') {
+                return $text;
+            }
+
+            $nested = $topic['Topics'] ?? null;
+            if (is_array($nested)) {
+                $nestedText = $this->extractFirstRelatedTopicText($nested);
+                if ($nestedText !== '') {
+                    return $nestedText;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Intenta responder preguntas generales sin Gemini, usando DuckDuckGo.
+     */
+    private function answerGeneralKnowledgeFallback(string $userMessage): ?string
+    {
+        $query = trim($userMessage);
+        if ($query === '') {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(min($this->timeout, 10))
+                ->get('https://api.duckduckgo.com/', [
+                    'q' => $query,
+                    'format' => 'json',
+                    'no_html' => 1,
+                    'skip_disambig' => 1,
+                    'kl' => 'es-es',
+                ]);
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $data = $response->json();
+            if (!is_array($data)) {
+                return null;
+            }
+
+            $answer = trim((string) ($data['Answer'] ?? ''));
+            if ($answer === '') {
+                $answer = trim((string) ($data['AbstractText'] ?? ''));
+            }
+            if ($answer === '') {
+                $answer = $this->extractFirstRelatedTopicText($data['RelatedTopics'] ?? []);
+            }
+
+            if ($answer === '') {
+                return null;
+            }
+
+            return "Modo Full (respaldo web): {$answer}";
+        } catch (\Exception $e) {
+            Log::warning('Gemini: Error en fallback general de Full', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    /**
+     * Respuesta de respaldo para mantener modo Full funcional sin Gemini.
+     */
+    private function buildFullModeFallbackResponse(string $fallbackReason, string $userMessage): array
+    {
+        $message = $this->answerGeneralKnowledgeFallback($userMessage);
+
+        if ($message === null) {
+            $message = "Modo Full activo con respaldo básico.\n"
+                . "No pude usar Gemini ahora mismo, pero puedo darte orientación general.\n"
+                . "Intenta una pregunta concreta (por ejemplo: \"¿Qué es la computación cuántica?\").";
+        }
+
+        return [
+            'success' => true,
+            'error' => null,
+            'message' => $message,
+            'effective_mode' => 'full',
+            'fallback_reason' => $fallbackReason,
+        ];
+    }
+
+    /**
+     * Resuelve fallback según el modo solicitado.
+     */
+    private function buildModeFallbackResponse(
+        string $mode,
+        string $fallbackReason,
+        string $userMessage,
+        array $conversationHistory = []
+    ): array {
+        if ($mode === 'full') {
+            return $this->buildFullModeFallbackResponse($fallbackReason, $userMessage);
+        }
+
+        return $this->buildSamsModeFallbackResponse($mode, $fallbackReason, $userMessage, $conversationHistory);
+    }
+
+    /**
+     * Detecta si un texto corresponde a error de API key inválida.
+     */
+    private function isInvalidApiKeyErrorMessage(?string $message): bool
+    {
+        $normalized = mb_strtolower(trim((string) $message), 'UTF-8');
+        if ($normalized === '') {
+            return false;
+        }
+
+        return str_contains($normalized, 'api key not valid')
+            || str_contains($normalized, 'invalid api key')
+            || str_contains($normalized, 'pass a valid api key')
+            || str_contains($normalized, 'api_key_invalid')
+            || str_contains($normalized, 'gemini_api_key')
+            || (str_contains($normalized, 'api key') && (
+                str_contains($normalized, 'not valid')
+                || str_contains($normalized, 'invalid')
+                || str_contains($normalized, 'no es válida')
+                || str_contains($normalized, 'no es valida')
+            ));
+    }
+
+    /**
+     * Construye una respuesta segura en modo SAMS cuando Full no está disponible.
+     */
+    private function buildSamsModeFallbackResponse(
+        string $originalMode,
+        string $fallbackReason,
+        string $userMessage,
+        array $conversationHistory = []
+    ): array {
+        $directAnswer = null;
+
+        try {
+            $directAnswer = $this->answerSamsCountQuestion($userMessage, $conversationHistory);
+        } catch (\Exception $e) {
+            Log::warning('Gemini: Error construyendo fallback SAMS', ['error' => $e->getMessage()]);
+        }
+
+        $baseMessage = $directAnswer ?? $this->buildSamsLocalFallbackMessage($fallbackReason);
+
+        if ($originalMode === 'full') {
+            $baseMessage = "⚠️ Modo Full no disponible por configuración/servicio de Gemini. Se activó Modo SAMS automáticamente.\n\n{$baseMessage}";
+        }
+
+        return [
+            'success' => true,
+            'error' => null,
+            'message' => $baseMessage,
+            'effective_mode' => 'sams',
+            'fallback_reason' => $fallbackReason,
+        ];
+    }
+
+    /**
      * Intenta responder directamente preguntas típicas en modo SAMS (conteos, listas, usuarios, roles, códigos),
      * consultando la base de datos sin llamar a la API de Gemini.
      *
@@ -450,6 +676,11 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
     private function answerSamsCountQuestion(string $userMessage, array $conversationHistory = []): ?string
     {
         $text = mb_strtolower($userMessage, 'UTF-8');
+
+        $basic = $this->answerBasicSamsQuestion($text);
+        if ($basic !== null) {
+            return $basic;
+        }
 
         // —— Búsqueda combinada: cédula Y nombre (ej: "con cedula 1079176426 y alguna que se llam laura") ——
         if (preg_match('/\b(?:con\s+)?(?:c[ée]dula|cedula|id)\s+([0-9]+)\s+(?:y|e)\s+(?:alg[uo]na?\s+)?(?:que\s+se\s+llam[ae]|llamad[oa]|con\s+nombre)\s+([a-záéíóúñ\s]+)/ui', $text, $m)
@@ -940,11 +1171,12 @@ Usa estos datos para responder preguntas sobre cantidades, listas, duplicados, e
         }
 
         if (!$this->isConfigured()) {
-            return [
-                'success' => false,
-                'error' => 'El servicio de Gemini no está configurado correctamente.',
-                'message' => null,
-            ];
+            return $this->buildModeFallbackResponse(
+                $mode,
+                'gemini_not_configured',
+                $userMessage,
+                $conversationHistory
+            );
         }
 
         if ($mode === 'full') {
@@ -1067,26 +1299,40 @@ INSTRUCCIONES:
                         'error' => $jsonError->getMessage(),
                         'body' => substr($response->body(), 0, 500)
                     ]);
-                    return [
-                        'success' => false,
-                        'error' => 'La respuesta de Gemini no es válida. Por favor, intenta nuevamente.',
-                        'message' => null,
-                    ];
+                    return $this->buildModeFallbackResponse(
+                        $mode,
+                        'invalid_json_response',
+                        $userMessage,
+                        $conversationHistory
+                    );
                 }
                 
                 // Verificar si hay candidatos
                 if (!isset($data['candidates']) || empty($data['candidates'])) {
                     Log::warning('Gemini: Respuesta sin candidatos', ['data' => $data]);
-                    return [
-                        'success' => false,
-                        'error' => 'La API de Gemini no devolvió una respuesta válida. Por favor, intenta nuevamente.',
-                        'message' => null,
-                    ];
+                    return $this->buildModeFallbackResponse(
+                        $mode,
+                        'empty_candidates',
+                        $userMessage,
+                        $conversationHistory
+                    );
                 }
                 
                 $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
                 
                 if ($text) {
+                    if ($mode === 'full' && $this->isInvalidApiKeyErrorMessage($text)) {
+                        Log::warning('Gemini: Texto de respuesta contiene error de API key inválida', [
+                            'text' => $text,
+                        ]);
+                        return $this->buildModeFallbackResponse(
+                            $mode,
+                            'invalid_api_key_text',
+                            $userMessage,
+                            $conversationHistory
+                        );
+                    }
+
                     Log::info('Gemini: Respuesta de chat generada exitosamente');
                     return [
                         'success' => true,
@@ -1108,19 +1354,21 @@ INSTRUCCIONES:
                         }
                     }
                     if ($blocked) {
-                        return [
-                            'success' => false,
-                            'error' => 'La respuesta fue bloqueada por filtros de seguridad de Gemini. Por favor, reformula tu pregunta.',
-                            'message' => null,
-                        ];
+                        return $this->buildModeFallbackResponse(
+                            $mode,
+                            'safety_blocked',
+                            $userMessage,
+                            $conversationHistory
+                        );
                     }
                 }
-                
-                return [
-                    'success' => false,
-                    'error' => 'La respuesta de Gemini no contiene texto. Por favor, intenta nuevamente.',
-                    'message' => null,
-                ];
+
+                return $this->buildModeFallbackResponse(
+                    $mode,
+                    'empty_text_response',
+                    $userMessage,
+                    $conversationHistory
+                );
             }
 
             // Manejar errores HTTP
@@ -1139,8 +1387,11 @@ INSTRUCCIONES:
             
             $errorMessage = null;
             
-            if ($statusCode === 401 || $statusCode === 403) {
-                $errorMessage = 'La API Key de Gemini no es válida o no tiene permisos. Verifica la configuración en el archivo .env (GEMINI_API_KEY).';
+            $apiErrorRaw = (string) ($errorData['error']['message'] ?? '');
+            $isInvalidApiKeyError = $this->isInvalidApiKeyErrorMessage($apiErrorRaw);
+
+            if ($statusCode === 401 || $statusCode === 403 || $isInvalidApiKeyError) {
+                $errorMessage = 'La API Key de Gemini no es válida o no tiene permisos. Actualiza GEMINI_API_KEY en .env o usa el Modo SAMS.';
             } elseif ($statusCode === 429) {
                 $errorMessage = 'Se excedió el límite de solicitudes a Gemini. Por favor, espera un momento e intenta nuevamente.';
             } elseif ($statusCode === 400) {
@@ -1161,23 +1412,25 @@ INSTRUCCIONES:
                 'response' => $errorData,
                 'body' => $response->body()
             ]);
-            
-            return [
-                'success' => false,
-                'error' => $errorMessage,
-                'message' => null,
-            ];
+
+            return $this->buildModeFallbackResponse(
+                $mode,
+                $errorMessage ?: 'http_error',
+                $userMessage,
+                $conversationHistory
+            );
 
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('Gemini: Error de conexión', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return [
-                'success' => false,
-                'error' => 'No se pudo conectar con la API de Gemini. Verifica tu conexión a internet y la configuración de la API Key.',
-                'message' => null,
-            ];
+            return $this->buildModeFallbackResponse(
+                $mode,
+                'connection_error',
+                $userMessage,
+                $conversationHistory
+            );
         } catch (\Exception $e) {
             Log::error('Gemini: Error en chatWithContext', [
                 'error' => $e->getMessage(),
@@ -1185,11 +1438,12 @@ INSTRUCCIONES:
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return [
-                'success' => false,
-                'error' => 'Error al comunicarse con Gemini: ' . $e->getMessage(),
-                'message' => null,
-            ];
+            return $this->buildModeFallbackResponse(
+                $mode,
+                'unexpected_error',
+                $userMessage,
+                $conversationHistory
+            );
         }
     }
 

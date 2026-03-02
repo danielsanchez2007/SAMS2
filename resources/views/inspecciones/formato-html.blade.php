@@ -66,40 +66,51 @@
         <h1>INSPECCIÓN TÉCNICA DEL EQUIPO</h1>
         <p class="subtitle">Tipo de equipo: {{ $tipoEquipo->nombre }}</p>
 
-        <table>
-            <tr>
-                <th colspan="2">Fecha de la inspección</th>
-                <th colspan="2">Validez de la inspección</th>
-            </tr>
-            <tr>
-                <td colspan="2" class="editable" contenteditable="true"></td>
-                <td colspan="2" class="editable" contenteditable="true"></td>
-            </tr>
-            <tr>
-                <th colspan="2">CRITERIOS DE INSPECCIÓN</th>
-                <th colspan="1">CUMPLIMIENTO<br>C / NC</th>
-                <th colspan="1">HALLAZGOS</th>
-            </tr>
-            @php
-                $criterios = [
-                    'El equipo cuenta con la etiqueta con la información del equipo de acuerdo con requerimientos normativos',
-                    'Resistencia integral mínima a la rotura de 5000 lb',
-                    'Capacidad integral mínima de 140 kg',
-                    'Las fibras de las correas e hilos de las costuras cumplen criterios normativos',
-                    'Todas las argollas cumplen con la resistencia mínima a la rotura',
-                    'El ancho de las correas cumple los requerimientos normativos',
-                    'El arnés y sus herrajes cumplen con los criterios normativos de marcación',
-                    'Las correas de hombros, dorso, pecho, pelvis, piernas cumplen con normativas',
-                ];
-            @endphp
-            @foreach($criterios as $texto)
+        @if(!empty($tipoEquipo->formato_html))
+            {{-- Formato generado desde el PDF subido para este tipo de equipo --}}
+            {!! $tipoEquipo->formato_html !!}
+        @else
+            {{-- Plantilla por defecto si aún no se ha subido PDF --}}
+            <table>
                 <tr>
-                    <td colspan="2">{{ $texto }}</td>
-                    <td class="editable" contenteditable="true"></td>
-                    <td class="editable" contenteditable="true"></td>
+                    <th colspan="2">Fecha de la inspección</th>
+                    <th colspan="2">Validez de la inspección</th>
                 </tr>
-            @endforeach
-        </table>
+                <tr>
+                    <td colspan="2" class="editable" contenteditable="true"></td>
+                    <td colspan="2" class="editable" contenteditable="true"></td>
+                </tr>
+                <tr>
+                    <th colspan="2">CRITERIOS DE INSPECCIÓN</th>
+                    <th colspan="2">CUMPLIMIENTO</th>
+                    <th rowspan="2">HALLAZGOS</th>
+                </tr>
+                <tr>
+                    <th class="section-header">C</th>
+                    <th class="section-header">NC</th>
+                </tr>
+                @php
+                    $criterios = [
+                        'El equipo cuenta con la etiqueta con la información del equipo de acuerdo con requerimientos normativos',
+                        'Resistencia integral mínima a la rotura de 5000 lb',
+                        'Capacidad integral mínima de 140 kg',
+                        'Las fibras de las correas e hilos de las costuras cumplen criterios normativos',
+                        'Todas las argollas cumplen con la resistencia mínima a la rotura',
+                        'El ancho de las correas cumple los requerimientos normativos',
+                        'El arnés y sus herrajes cumplen con los criterios normativos de marcación',
+                        'Las correas de hombros, dorso, pecho, pelvis, piernas cumplen con normativas',
+                    ];
+                @endphp
+                @foreach($criterios as $texto)
+                    <tr>
+                        <td colspan="2">{{ $texto }}</td>
+                        <td class="editable" contenteditable="true"></td> {{-- C --}}
+                        <td class="editable" contenteditable="true"></td> {{-- NC --}}
+                        <td class="editable" contenteditable="true"></td> {{-- Hallazgos --}}
+                    </tr>
+                @endforeach
+            </table>
+        @endif
     </div>
 </body>
 </html>

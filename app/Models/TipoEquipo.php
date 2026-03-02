@@ -8,7 +8,7 @@ class TipoEquipo extends Model
 {
     protected $table = 'tipo_equipos';
 
-    protected $fillable = ['nombre', 'formato_archivo'];
+    protected $fillable = ['nombre', 'formato_archivo', 'formato_html'];
 
     public function tieneFormato(): bool
     {
